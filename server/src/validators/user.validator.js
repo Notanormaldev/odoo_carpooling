@@ -6,6 +6,7 @@ export const updateProfileSchema = z.object({
     mobile: z.string().regex(/^[6-9]\d{9}$/, 'Invalid Indian mobile number').optional(),
     department: z.string().optional(),
     officeLocation: z.string().optional(),
+    drivingLicense: z.string().min(5).optional(),
   }),
 });
 

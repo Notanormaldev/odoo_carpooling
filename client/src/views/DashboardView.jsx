@@ -1,0 +1,551 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Search, Shield, X, Loader } from 'lucide-react';
+import * as maptilersdk from '@maptiler/sdk';
+import toast from 'react-hot-toast';
+import useAuthStore from '../store/authStore';
+import api from '../api/axios';
+
+maptilersdk.config.apiKey = import.meta.env.VITE_MAPTILER_API_KEY || 'RL13CDEQU2gZu8sIcdc0';
+
+const geocodeAddress = (address, isDestination = false) => {
+  if (!address) return isDestination ? { lat: 23.1974, lng: 72.6326 } : { lat: 23.0225, lng: 72.5714 };
+  const clean = address.toLowerCase().trim();
+  
+  if (clean.includes('infocity')) {
+    return { lat: 23.1974, lng: 72.6326 };
+  }
+  if (clean.includes('iskcon')) {
+    return { lat: 23.0225, lng: 72.5714 };
+  }
+  if (clean.includes('c g road') || clean.includes('cg road')) {
+    return { lat: 23.0258, lng: 72.5594 };
+  }
+  if (clean.includes('sector 21')) {
+    return { lat: 23.2244, lng: 72.6489 };
+  }
+  if (clean.includes('gift city')) {
+    return { lat: 23.1594, lng: 72.6844 };
+  }
+  if (clean.includes('sargasan')) {
+    return { lat: 23.1947, lng: 72.6105 };
+  }
+  if (clean.includes('vastrapur')) {
+    return { lat: 23.0379, lng: 72.5273 };
+  }
+  if (clean.includes('prahlad')) {
+    return { lat: 22.9982, lng: 72.5034 };
+  }
+  if (clean.includes('chandkheda')) {
+    return { lat: 23.1118, lng: 72.5855 };
+  }
+
+  const hash = address.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const baseLat = isDestination ? 23.1974 : 23.0225;
+  const baseLng = isDestination ? 72.6326 : 72.5714;
+  const offsetLat = ((hash % 100) / 1000) - 0.05;
+  const offsetLng = ((hash % 80) / 1000) - 0.04;
+  
+  return { lat: baseLat + offsetLat, lng: baseLng + offsetLng };
+};
+
+export default function DashboardView() {
+  const { user, loadUser } = useAuthStore();
+  const [activeTab, setActiveTab] = useState('find');
+  const [pickup, setPickup] = useState('');
+  const [destination, setDestination] = useState('');
+  const [date, setDate] = useState('');
+  const [seats, setSeats] = useState(1);
+  const [rides, setRides] = useState([]);
+  const [vehicles, setVehicles] = useState([]);
+  const [selectedVehicle, setSelectedVehicle] = useState('');
+  const [fareOffer, setFareOffer] = useState(120);
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState('');
+  const [showConfirmRoute, setShowConfirmRoute] = useState(false);
+  const mapContainerRef = useRef(null);
+  const mapRef = useRef(null);
+
+  const [dlNumber, setDlNumber] = useState('');
+  const [dlSubmitting, setDlSubmitting] = useState(false);
+
+  useEffect(() => {
+    fetchMyVehicles();
+  }, []);
+
+  const fetchMyVehicles = async () => {
+    try {
+      const res = await api.get('/vehicles/my-vehicles');
+      setVehicles(res.data.data.filter(v => v.status === 'active'));
+      if (res.data.data.length > 0) {
+        setSelectedVehicle(res.data.data[0]._id);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleSearch = async (e) => {
+    if (e) e.preventDefault();
+    setLoading(true);
+    try {
+      const res = await api.get(`/rides/search?seats=${seats}&date=${date}`);
+      setRides(res.data.data);
+      if (res.data.data.length === 0) {
+        setMsg('No available rides matching your criteria.');
+      } else {
+        setMsg('');
+      }
+    } catch (err) {
+      setMsg('Error searching for rides.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDlSubmit = async (e) => {
+    e.preventDefault();
+    if (!dlNumber.trim()) return;
+    setDlSubmitting(true);
+    try {
+      await api.patch('/users/profile', { drivingLicense: dlNumber });
+      await loadUser();
+      toast.success('Driving license updated successfully!');
+    } catch (err) {
+      toast.error('Failed to save driving license');
+    } finally {
+      setDlSubmitting(false);
+    }
+  };
+
+  const handlePublishClick = (e) => {
+    e.preventDefault();
+    setShowConfirmRoute(true);
+    setTimeout(() => {
+      if (!mapContainerRef.current || mapRef.current) return;
+      try {
+        const start = geocodeAddress(pickup, false);
+        const dest = geocodeAddress(destination, true);
+        const startLat = start.lat;
+        const startLng = start.lng;
+        const destLat = dest.lat;
+        const destLng = dest.lng;
+
+        mapRef.current = new maptilersdk.Map({
+          container: mapContainerRef.current,
+          style: maptilersdk.MapStyle.STREETS,
+          center: [startLng, startLat],
+          zoom: 11,
+        });
+
+        new maptilersdk.Marker({ color: "#22c55e" })
+          .setLngLat([startLng, startLat])
+          .addTo(mapRef.current);
+
+        new maptilersdk.Marker({ color: "#e85d4a" })
+          .setLngLat([destLng, destLat])
+          .addTo(mapRef.current);
+
+        mapRef.current.on('load', () => {
+          mapRef.current.addSource('route', {
+            type: 'geojson',
+            data: {
+              type: 'Feature',
+              properties: {},
+              geometry: {
+                type: 'LineString',
+                coordinates: [
+                  [startLng, startLat],
+                  [destLng, destLat]
+                ]
+              }
+            }
+          });
+          mapRef.current.addLayer({
+            id: 'route',
+            type: 'line',
+            source: 'route',
+            layout: {
+              'line-join': 'round',
+              'line-cap': 'round'
+            },
+            paint: {
+              'line-color': '#e85d4a',
+              'line-width': 4
+            }
+          });
+
+          const bounds = new maptilersdk.LngLatBounds();
+          bounds.extend([startLng, startLat]);
+          bounds.extend([destLng, destLat]);
+          mapRef.current.fitBounds(bounds, { padding: 40 });
+        });
+      } catch (err) {
+        console.error('Dashboard Map initialization error:', err);
+      }
+    }, 100);
+  };
+
+  const handleConfirmPublish = async () => {
+    setLoading(true);
+    try {
+      const start = geocodeAddress(pickup, false);
+      const dest = geocodeAddress(destination, true);
+      const dateTime = new Date(`${date}T08:00:00Z`).toISOString();
+      await api.post('/rides', {
+        vehicleId: selectedVehicle,
+        startLocation: { address: pickup, lat: start.lat, lng: start.lng },
+        destination: { address: destination, lat: dest.lat, lng: dest.lng },
+        dateTime,
+        totalSeats: Number(seats),
+        farePerSeat: Number(fareOffer),
+      });
+      toast.success('Ride published successfully!');
+      setShowConfirmRoute(false);
+      setPickup('');
+      setDestination('');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Error publishing ride');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBook = async (rideId) => {
+    try {
+      await api.post('/trips/book', { rideId, seatsBooked: 1 });
+      toast.success('Ride booked! Check "My Trips" to manage it.');
+      setRides(rides.filter(r => r._id !== rideId));
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Booking failed');
+    }
+  };
+
+  return (
+    <div className="space-y-8 max-w-4xl mx-auto">
+      {/* Tab toggle */}
+      <div className="flex border-b border-slate-200">
+        <button 
+          onClick={() => { setActiveTab('find'); setShowConfirmRoute(false); }}
+          className={`pb-4 px-6 font-bold text-sm border-b-2 transition-all cursor-pointer ${activeTab === 'find' ? 'border-[#e85d4a] text-[#e85d4a]' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+        >
+          Find Ride
+        </button>
+        <button 
+          onClick={() => { setActiveTab('offer'); setShowConfirmRoute(false); }}
+          className={`pb-4 px-6 font-bold text-sm border-b-2 transition-all cursor-pointer ${activeTab === 'offer' ? 'border-[#e85d4a] text-[#e85d4a]' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+        >
+          Offer Ride
+        </button>
+      </div>
+
+      {showConfirmRoute ? (
+        <div className="bg-white border border-slate-200 rounded-lg p-6 space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="font-bold text-lg text-slate-800">Confirm Route</h2>
+            <button onClick={() => setShowConfirmRoute(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer"><X className="w-5 h-5" /></button>
+          </div>
+
+          <div ref={mapContainerRef} className="w-full h-80 bg-slate-100 rounded border border-slate-200 relative overflow-hidden"></div>
+
+          <div className="flex items-center justify-between">
+            <div className="text-sm">
+              <p className="text-slate-400">Total Route Cost</p>
+              <p className="font-bold text-slate-800 text-lg">₹{fareOffer} / Seat</p>
+            </div>
+            <button 
+              onClick={handleConfirmPublish}
+              disabled={loading}
+              className="bg-[#e85d4a] hover:bg-[#d94d3a] text-white text-sm font-semibold px-6 py-2.5 rounded shadow-sm transition-all cursor-pointer"
+            >
+              {loading ? 'Publishing...' : 'Publish Ride'}
+            </button>
+          </div>
+        </div>
+      ) : activeTab === 'find' ? (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="bg-white border border-slate-200 p-6 rounded-lg shadow-sm h-fit space-y-6">
+            <h3 className="font-bold text-slate-800 text-sm">Where are you going?</h3>
+            <form onSubmit={handleSearch} className="space-y-4">
+              <div>
+                <label className="block text-xs text-slate-400 mb-2 font-medium">Start Location</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Pickup point"
+                  value={pickup}
+                  onChange={(e) => setPickup(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-2.5 text-sm focus:outline-none focus:border-[#e85d4a]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-slate-400 mb-2 font-medium">Drop/Destination Location</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Drop point"
+                  value={destination}
+                  onChange={(e) => setDestination(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-2.5 text-sm focus:outline-none focus:border-[#e85d4a]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs text-slate-400 mb-2 font-medium">Date</label>
+                  <input
+                    type="date"
+                    required
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-2.5 text-xs focus:outline-none focus:border-[#e85d4a]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-2 font-medium">Seats</label>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={seats}
+                    onChange={(e) => setSeats(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-2.5 text-xs focus:outline-none focus:border-[#e85d4a]"
+                  />
+                </div>
+              </div>
+
+              <button type="submit" className="w-full bg-[#e85d4a] hover:bg-[#d94d3a] text-white py-3 rounded text-sm font-semibold transition-colors shadow-sm cursor-pointer">
+                Find Ride
+              </button>
+            </form>
+
+            <div className="mt-4 pt-4 border-t border-slate-100 space-y-2">
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Recommended Commutes</span>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { from: 'Ahmedabad (ISKCON Circle)', to: 'Gandhinagar (Infocity)', label: 'Ahmedabad ➔ Gandhinagar' },
+                  { from: 'Ahmedabad (C G Road)', to: 'Gandhinagar (Sector 21)', label: 'CG Road ➔ Sector 21' },
+                  { from: 'GIFT City, Gandhinagar', to: 'Sargasan, Gandhinagar', label: 'GIFT City ➔ Sargasan' }
+                ].map((route, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={async () => {
+                      setPickup(route.from);
+                      setDestination(route.to);
+                      setDate('2026-07-31');
+                      setLoading(true);
+                      try {
+                        const res = await api.get(`/rides/search?seats=${seats}&date=2026-07-31`);
+                        setRides(res.data.data);
+                        if (res.data.data.length === 0) {
+                          setMsg('No available rides matching your criteria.');
+                        } else {
+                          setMsg('');
+                        }
+                      } catch (err) {
+                        setMsg('Error searching for rides.');
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                    className="text-[10px] bg-slate-100 hover:bg-[#e85d4a]/10 hover:text-[#e85d4a] text-slate-600 font-bold px-2 py-1.5 rounded transition-all cursor-pointer font-sans"
+                  >
+                    {route.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="md:col-span-2 space-y-4">
+            <h3 className="font-bold text-slate-800 text-sm">Available Pools</h3>
+            {rides.length === 0 ? (
+              <div className="bg-white border border-slate-200 rounded-lg p-12 text-center text-slate-400 shadow-sm">
+                <Search className="w-8 h-8 mx-auto mb-3 text-slate-300" />
+                <p className="text-sm">{msg || 'Submit search filters or click a popular route commute to view employee pools.'}</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {rides.map(r => (
+                  <div key={r._id} className="bg-white border border-slate-200 p-5 rounded-lg flex items-center justify-between shadow-sm">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-xs font-bold uppercase text-slate-600">
+                          {r.driverId?.name?.slice(0,2)}
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-slate-800">{r.driverId?.name}</p>
+                          <p className="text-[10px] text-slate-400">{r.dateTime ? new Date(r.dateTime).toLocaleString() : ''}</p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-500">Route: {r.startLocation?.address} to {r.destination?.address}</p>
+                    </div>
+
+                    <div className="text-right space-y-2">
+                      <p className="text-base font-bold text-[#e85d4a]">₹{r.farePerSeat} / Seat</p>
+                      <button onClick={() => handleBook(r._id)} className="bg-[#e85d4a] hover:bg-[#d94d3a] text-white text-xs font-bold px-4 py-2 rounded transition-colors shadow-sm cursor-pointer">
+                        Book Now
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        /* Offer Ride: Check for Driving License first (One-Time Verification) */
+        user?.drivingLicenseStatus !== 'approved' ? (
+          <div className="bg-white border border-slate-200 p-8 rounded-lg max-w-md mx-auto shadow-sm space-y-6">
+            <div className="text-center space-y-2">
+              <Shield className="w-10 h-10 text-[#e85d4a] mx-auto" />
+              <h3 className="font-bold text-slate-800 text-base">Driving License Verification</h3>
+              <p className="text-xs text-slate-400 font-medium">
+                {user?.drivingLicenseStatus === 'pending'
+                  ? 'Your driving license is awaiting verification by the administrator. We will notify you once approved.'
+                  : 'To offer and publish ride pools, register your driving license details for enterprise security.'}
+              </p>
+            </div>
+            
+            {user?.drivingLicenseStatus !== 'pending' && (
+              <form onSubmit={handleDlSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-xs uppercase tracking-wider text-slate-500 mb-2">Driving License Number</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. DL-IND-9992388"
+                    value={dlNumber}
+                    onChange={(e) => setDlNumber(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-3 text-sm focus:outline-none focus:border-[#e85d4a] focus:bg-white"
+                  />
+                </div>
+
+                <button 
+                  type="submit" 
+                  disabled={dlSubmitting}
+                  className="w-full bg-[#e85d4a] hover:bg-[#d94d3a] text-white py-3 rounded text-sm font-semibold transition-colors shadow-sm cursor-pointer"
+                >
+                  {dlSubmitting ? 'Registering...' : 'Register Driving License'}
+                </button>
+              </form>
+            )}
+          </div>
+        ) : (
+          <div className="bg-white border border-slate-200 p-8 rounded-lg max-w-xl mx-auto shadow-sm space-y-6">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-bold text-slate-800 text-sm">Offer Ride Details</h3>
+              <span className="text-[10px] text-slate-400 font-bold uppercase bg-slate-50 px-2 py-1 rounded">Verified Driver: {user.drivingLicense}</span>
+            </div>
+            
+            <form onSubmit={handlePublishClick} className="space-y-4">
+              <div>
+                <label className="block text-xs text-slate-400 mb-2 font-medium">Select Vehicle</label>
+                <select
+                  value={selectedVehicle}
+                  onChange={(e) => setSelectedVehicle(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-3 text-sm focus:outline-none focus:border-[#e85d4a]"
+                >
+                  {vehicles.map(v => (
+                    <option key={v._id} value={v._id}>{v.model} - {v.registrationNumber}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs text-slate-400 mb-2 font-medium">Pickup Point</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Start Location"
+                  value={pickup}
+                  onChange={(e) => setPickup(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-3 text-sm focus:outline-none focus:border-[#e85d4a]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-slate-400 mb-2 font-medium">Destination Point</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Drop point"
+                  value={destination}
+                  onChange={(e) => setDestination(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-3 text-sm focus:outline-none focus:border-[#e85d4a]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs text-slate-400 mb-2 font-medium">Date</label>
+                  <input
+                    type="date"
+                    required
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-3 text-sm focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-2 font-medium">Seats</label>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={seats}
+                    onChange={(e) => setSeats(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-3 text-sm focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs text-slate-400 mb-2 font-medium">Price / Seat (₹)</label>
+                <input
+                  type="number"
+                  min="10"
+                  required
+                  value={fareOffer}
+                  onChange={(e) => setFareOffer(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-3 text-sm focus:outline-none focus:border-[#e85d4a]"
+                />
+              </div>
+
+              <button type="submit" className="w-full bg-[#e85d4a] hover:bg-[#d94d3a] text-white py-3 rounded text-sm font-semibold transition-colors shadow-sm cursor-pointer">
+                Confirm Route & Price
+              </button>
+            </form>
+
+            <div className="mt-4 pt-4 border-t border-slate-100 space-y-2">
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Recommended Commutes</span>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { from: 'Ahmedabad (ISKCON Circle)', to: 'Gandhinagar (Infocity)', label: 'Ahmedabad ➔ Gandhinagar' },
+                  { from: 'Ahmedabad (C G Road)', to: 'Gandhinagar (Sector 21)', label: 'CG Road ➔ Sector 21' },
+                  { from: 'GIFT City, Gandhinagar', to: 'Sargasan, Gandhinagar', label: 'GIFT City ➔ Sargasan' }
+                ].map((route, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      setPickup(route.from);
+                      setDestination(route.to);
+                      setDate('2026-07-31');
+                      toast.success('Commute endpoints pre-filled! 🚗');
+                    }}
+                    className="text-[10px] bg-slate-100 hover:bg-[#e85d4a]/10 hover:text-[#e85d4a] text-slate-600 font-bold px-2 py-1.5 rounded transition-all cursor-pointer"
+                  >
+                    {route.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )
+      )}
+    </div>
+  );
+}

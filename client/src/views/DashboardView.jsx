@@ -1,12 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Shield, X, Loader } from 'lucide-react';
-import * as maptilersdk from '@maptiler/sdk';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import toast from 'react-hot-toast';
 import useAuthStore from '../store/authStore';
 import api from '../api/axios';
 
-maptilersdk.config.apiKey = import.meta.env.VITE_MAPTILER_API_KEY || 'RL13CDEQU2gZu8sIcdc0';
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 
 const CITIES = [
   { label: 'AHM (AHMEDABAD)', name: 'ahmedabad', lat: 23.0225, lng: 72.5714 },
@@ -208,6 +214,14 @@ export default function DashboardView() {
     }
   };
 
+  const handleCloseConfirmRoute = () => {
+    setShowConfirmRoute(false);
+    if (mapRef.current) {
+      mapRef.current.remove();
+      mapRef.current = null;
+    }
+  };
+
   const handlePublishClick = (e) => {
     e.preventDefault();
     setShowConfirmRoute(true);
@@ -221,55 +235,49 @@ export default function DashboardView() {
         const destLat = dest.lat;
         const destLng = dest.lng;
 
-        mapRef.current = new maptilersdk.Map({
-          container: mapContainerRef.current,
-          style: maptilersdk.MapStyle.STREETS,
-          center: [startLng, startLat],
-          zoom: 11,
+        mapRef.current = L.map(mapContainerRef.current).setView([startLat, startLng], 11);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(mapRef.current);
+
+        const greenIcon = new L.Icon({
+          iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+          iconSize: [25, 41],
+          iconAnchor: [12, 41],
+          popupAnchor: [1, -34],
+          shadowSize: [41, 41]
         });
 
-        new maptilersdk.Marker({ color: "#22c55e" })
-          .setLngLat([startLng, startLat])
-          .addTo(mapRef.current);
-
-        new maptilersdk.Marker({ color: "#e85d4a" })
-          .setLngLat([destLng, destLat])
-          .addTo(mapRef.current);
-
-        mapRef.current.on('load', () => {
-          mapRef.current.addSource('route', {
-            type: 'geojson',
-            data: {
-              type: 'Feature',
-              properties: {},
-              geometry: {
-                type: 'LineString',
-                coordinates: [
-                  [startLng, startLat],
-                  [destLng, destLat]
-                ]
-              }
-            }
-          });
-          mapRef.current.addLayer({
-            id: 'route',
-            type: 'line',
-            source: 'route',
-            layout: {
-              'line-join': 'round',
-              'line-cap': 'round'
-            },
-            paint: {
-              'line-color': '#e85d4a',
-              'line-width': 4
-            }
-          });
-
-          const bounds = new maptilersdk.LngLatBounds();
-          bounds.extend([startLng, startLat]);
-          bounds.extend([destLng, destLat]);
-          mapRef.current.fitBounds(bounds, { padding: 40 });
+        const redIcon = new L.Icon({
+          iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+          iconSize: [25, 41],
+          iconAnchor: [12, 41],
+          popupAnchor: [1, -34],
+          shadowSize: [41, 41]
         });
+
+        L.marker([startLat, startLng], { icon: greenIcon })
+          .addTo(mapRef.current)
+          .bindPopup(`<b>Start:</b> ${pickup}`);
+
+        L.marker([destLat, destLng], { icon: redIcon })
+          .addTo(mapRef.current)
+          .bindPopup(`<b>Destination:</b> ${destination}`);
+
+        L.polyline([[startLat, startLng], [destLat, destLng]], {
+          color: '#e85d4a',
+          weight: 4,
+          opacity: 0.8
+        }).addTo(mapRef.current);
+
+        const bounds = L.latLngBounds([
+          [startLat, startLng],
+          [destLat, destLng]
+        ]);
+        mapRef.current.fitBounds(bounds, { padding: [40, 40] });
       } catch (err) {
         console.error('Dashboard Map initialization error:', err);
       }
@@ -291,7 +299,7 @@ export default function DashboardView() {
         farePerSeat: Number(fareOffer),
       });
       toast.success('Ride published successfully!');
-      setShowConfirmRoute(false);
+      handleCloseConfirmRoute();
       setPickup('');
       setDestination('');
     } catch (err) {
@@ -317,13 +325,13 @@ export default function DashboardView() {
       <div className="flex border-b border-slate-200"
       >
         <button 
-          onClick={() => { setActiveTab('find'); setShowConfirmRoute(false); }}
+          onClick={() => { setActiveTab('find'); handleCloseConfirmRoute(); }}
           className={`pb-4 px-6 font-bold text-sm border-b-2 transition-all cursor-pointer ${activeTab === 'find' ? 'border-[#e85d4a] text-[#e85d4a]' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
         >
           Find Ride
         </button>
         <button 
-          onClick={() => { setActiveTab('offer'); setShowConfirmRoute(false); }}
+          onClick={() => { setActiveTab('offer'); handleCloseConfirmRoute(); }}
           className={`pb-4 px-6 font-bold text-sm border-b-2 transition-all cursor-pointer ${activeTab === 'offer' ? 'border-[#e85d4a] text-[#e85d4a]' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
         >
           Offer Ride
@@ -334,7 +342,7 @@ export default function DashboardView() {
         <div className="bg-white border border-slate-200 rounded-lg p-6 space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="font-bold text-lg text-slate-800">Confirm Route</h2>
-            <button onClick={() => setShowConfirmRoute(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer"><X className="w-5 h-5" /></button>
+            <button onClick={handleCloseConfirmRoute} className="text-slate-400 hover:text-slate-600 cursor-pointer"><X className="w-5 h-5" /></button>
           </div>
 
           <div ref={mapContainerRef} className="w-full h-80 bg-slate-100 rounded border border-slate-200 relative overflow-hidden"></div>

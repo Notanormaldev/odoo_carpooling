@@ -1,14 +1,20 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Loader, ChevronLeft, Download, Send, X } from 'lucide-react';
-import * as maptilersdk from '@maptiler/sdk';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import toast from 'react-hot-toast';
 import useAuthStore from '../store/authStore';
 import api from '../api/axios';
 import { io } from 'socket.io-client';
 import { jsPDF } from 'jspdf';
 
-maptilersdk.config.apiKey = import.meta.env.VITE_MAPTILER_API_KEY || 'RL13CDEQU2gZu8sIcdc0';
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 
 export default function TripDetailView() {
   const { id } = useParams();
@@ -96,59 +102,49 @@ export default function TripDetailView() {
         const destLat = trip.rideId?.destination?.lat || 23.1974;
         const destLng = trip.rideId?.destination?.lng || 72.6326;
 
-        mapRef.current = new maptilersdk.Map({
-          container: mapContainerRef.current,
-          style: maptilersdk.MapStyle.STREETS,
-          center: [startLng, startLat],
-          zoom: 11,
+        mapRef.current = L.map(mapContainerRef.current).setView([startLat, startLng], 11);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(mapRef.current);
+
+        const greenIcon = new L.Icon({
+          iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+          iconSize: [25, 41],
+          iconAnchor: [12, 41],
+          popupAnchor: [1, -34],
+          shadowSize: [41, 41]
         });
 
-        // Add Start marker (Green)
-        new maptilersdk.Marker({ color: "#22c55e" })
-          .setLngLat([startLng, startLat])
-          .setPopup(new maptilersdk.Popup().setHTML(`<b>Start:</b> ${trip.rideId?.startLocation?.address || 'Pickup Point'}`))
-          .addTo(mapRef.current);
-
-        // Add Destination marker (Coral Red)
-        new maptilersdk.Marker({ color: "#e85d4a" })
-          .setLngLat([destLng, destLat])
-          .setPopup(new maptilersdk.Popup().setHTML(`<b>Destination:</b> ${trip.rideId?.destination?.address || 'Destination'}`))
-          .addTo(mapRef.current);
-
-        mapRef.current.on('load', () => {
-          mapRef.current.addSource('route', {
-            type: 'geojson',
-            data: {
-              type: 'Feature',
-              properties: {},
-              geometry: {
-                type: 'LineString',
-                coordinates: [
-                  [startLng, startLat],
-                  [destLng, destLat]
-                ]
-              }
-            }
-          });
-          mapRef.current.addLayer({
-            id: 'route',
-            type: 'line',
-            source: 'route',
-            layout: {
-              'line-join': 'round',
-              'line-cap': 'round'
-            },
-            paint: {
-              'line-color': '#e85d4a',
-              'line-width': 4
-            }
-          });
-
-          const bounds = new maptilersdk.LngLatBounds();
-          bounds.extend([startLng, startLat]);
-          bounds.extend([destLng, destLat]);
-          mapRef.current.fitBounds(bounds, { padding: 50 });
+        const redIcon = new L.Icon({
+          iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+          iconSize: [25, 41],
+          iconAnchor: [12, 41],
+          popupAnchor: [1, -34],
+          shadowSize: [41, 41]
         });
+
+        L.marker([startLat, startLng], { icon: greenIcon })
+          .addTo(mapRef.current)
+          .bindPopup(`<b>Start:</b> ${trip.rideId?.startLocation?.address || 'Pickup Point'}`);
+
+        L.marker([destLat, destLng], { icon: redIcon })
+          .addTo(mapRef.current)
+          .bindPopup(`<b>Destination:</b> ${trip.rideId?.destination?.address || 'Destination'}`);
+
+        L.polyline([[startLat, startLng], [destLat, destLng]], {
+          color: '#e85d4a',
+          weight: 4,
+          opacity: 0.8
+        }).addTo(mapRef.current);
+
+        const bounds = L.latLngBounds([
+          [startLat, startLng],
+          [destLat, destLng]
+        ]);
+        mapRef.current.fitBounds(bounds, { padding: [50, 50] });
       } catch (err) {
         console.error('Trip Detail Map initialization error:', err);
       }

@@ -86,7 +86,6 @@ const userSchema = new mongoose.Schema(
 );
 
 // Indexes
-userSchema.index({ email: 1 });
 userSchema.index({ orgId: 1 });
 userSchema.index({ orgId: 1, role: 1 });
 userSchema.index({ trustScore: -1 });

@@ -8,6 +8,7 @@ import walletRoutes from './wallet.routes.js';
 import adminRoutes from './admin.routes.js';
 import reportRoutes from './report.routes.js';
 import userRoutes from './user.routes.js';
+import supportRoutes from './support.routes.js';
 
 const router = express.Router();
 
@@ -20,5 +21,6 @@ router.use('/wallet', walletRoutes);
 router.use('/admin', adminRoutes);
 router.use('/reports', reportRoutes);
 router.use('/users', userRoutes);
+router.use('/support', supportRoutes);
 
 export default router;

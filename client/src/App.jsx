@@ -1122,7 +1122,7 @@ Thank you for reducing corporate carbon footprint!
       {/* Main content pane */}
       <div className="md:col-span-3 bg-white border border-slate-200 rounded-lg p-6 shadow-sm space-y-6">
         <div className="flex items-center gap-2 border-b border-slate-200 pb-4">
-          <ChevronLeft className="w-5 h-5 text-[#e85d4a] cursor-pointer" />
+          <ChevronLeft className="w-5 h-5 text-[#e85d4a] cursor-pointer" onClick={() => navigate(-1)} />
           <h3 className="font-bold text-slate-800 text-sm">Rides History</h3>
         </div>
 
@@ -1224,7 +1224,7 @@ function MyVehicleView() {
       <div className="md:col-span-3 bg-white border border-slate-200 rounded-lg p-6 shadow-sm space-y-6">
         <div className="flex items-center justify-between border-b border-slate-200 pb-4">
           <div className="flex items-center gap-2">
-            <ChevronLeft className="w-5 h-5 text-[#e85d4a] cursor-pointer" />
+            <ChevronLeft className="w-5 h-5 text-[#e85d4a] cursor-pointer" onClick={() => navigate(-1)} />
             <h3 className="font-bold text-slate-800 text-sm">My Vehicle</h3>
           </div>
           <button 
@@ -1427,7 +1427,7 @@ function WalletView() {
       <div className="md:col-span-3 bg-white border border-slate-200 rounded-lg p-6 shadow-sm space-y-6">
         <div className="flex items-center justify-between border-b border-slate-200 pb-4">
           <div className="flex items-center gap-2">
-            <ChevronLeft className="w-5 h-5 text-[#e85d4a] cursor-pointer" />
+            <ChevronLeft className="w-5 h-5 text-[#e85d4a] cursor-pointer" onClick={() => navigate(-1)} />
             <h3 className="font-bold text-slate-800 text-sm">Recharge Wallet</h3>
           </div>
           <span className="text-sm font-semibold text-slate-600">Balance: <b className="text-slate-800">₹{balance}</b></span>
@@ -1491,7 +1491,7 @@ function MyTripsView() {
 
       <div className="md:col-span-3 bg-white border border-slate-200 rounded-lg p-6 shadow-sm space-y-6">
         <div className="flex items-center gap-2 border-b border-slate-200 pb-4">
-          <ChevronLeft className="w-5 h-5 text-[#e85d4a] cursor-pointer" />
+          <ChevronLeft className="w-5 h-5 text-[#e85d4a] cursor-pointer" onClick={() => navigate(-1)} />
           <h3 className="font-bold text-slate-800 text-sm">Active Commutes</h3>
         </div>
 

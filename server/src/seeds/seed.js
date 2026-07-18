@@ -58,6 +58,7 @@ const seedDatabase = async () => {
       manager: 'Siddharth Shah',
       officeLocation: 'Tower A, Floor 5',
       profilePhoto: 'https://ik.imagekit.io/default/raj_patel.jpg',
+      drivingLicense: 'DL-IND-9992388',
       walletBalance: 500,
       trustScore: 4.8,
       isEmailVerified: true,
@@ -76,6 +77,7 @@ const seedDatabase = async () => {
       manager: 'Nisha Vyas',
       officeLocation: 'Tower B, Floor 2',
       profilePhoto: 'https://ik.imagekit.io/default/krishna_s.jpg',
+      drivingLicense: 'DL-IND-8883299',
       walletBalance: 200,
       trustScore: 4.9,
       isEmailVerified: true,
@@ -167,6 +169,38 @@ const seedDatabase = async () => {
       totalSeats: 3,
       availableSeats: 3,
       farePerSeat: 120,
+      status: 'published',
+    });
+
+    console.log('📅 Seeding specific rides for July 31, 2026 (Ahmedabad to Gandhinagar)...');
+    
+    // July 31 ride 1
+    const jul31Date1 = new Date('2026-07-31T09:00:00.000Z');
+    await Ride.create({
+      driverId: raj._id,
+      vehicleId: rajVehicle._id,
+      orgId: org._id,
+      startLocation: { address: 'Ahmedabad (ISKCON Circle)', lat: 23.0225, lng: 72.5714 },
+      destination: { address: 'Gandhinagar (Infocity)', lat: 23.1974, lng: 72.6326 },
+      dateTime: jul31Date1,
+      totalSeats: 3,
+      availableSeats: 3,
+      farePerSeat: 120,
+      status: 'published',
+    });
+
+    // July 31 ride 2
+    const jul31Date2 = new Date('2026-07-31T18:30:00.000Z');
+    await Ride.create({
+      driverId: krishna._id,
+      vehicleId: krishnaVehicle._id,
+      orgId: org._id,
+      startLocation: { address: 'Ahmedabad (C G Road)', lat: 23.0258, lng: 72.5594 },
+      destination: { address: 'Gandhinagar (Sector 21)', lat: 23.2244, lng: 72.6489 },
+      dateTime: jul31Date2,
+      totalSeats: 4,
+      availableSeats: 4,
+      farePerSeat: 100,
       status: 'published',
     });
 

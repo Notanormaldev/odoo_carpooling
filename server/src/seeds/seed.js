@@ -8,6 +8,7 @@ import User from '../models/User.model.js';
 import Vehicle from '../models/Vehicle.model.js';
 import Ride from '../models/Ride.model.js';
 import Trip from '../models/Trip.model.js';
+import WalletTransaction from '../models/WalletTransaction.model.js';
 
 const seedDatabase = async () => {
   try {

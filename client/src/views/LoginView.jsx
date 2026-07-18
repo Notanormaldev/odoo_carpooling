@@ -3,6 +3,14 @@ import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import useAuthStore from '../store/authStore';
+import api from '../api/axios';
+export default function LoginView() {
+  const { login, error, clearError } = useAuthStore();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [step, setStep] = useState('login'); // 'login' | 'forgot' | 'reset'
   const [resetEmail, setResetEmail] = useState('');

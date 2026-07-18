@@ -1,6 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#e85d4a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-  <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" />
-  <circle cx="7" cy="17" r="2" />
-  <path d="M9 17h6" />
-  <circle cx="17" cy="17" r="2" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <!-- Left/Pickup Route Loop -->
+  <path d="M30 50 C30 35, 45 25, 55 35 C65 45, 45 65, 30 50 Z" stroke="#e85d4a" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" />
+  
+  <!-- Right/Destination Route Loop -->
+  <path d="M70 50 C70 65, 55 75, 45 65 C35 55, 55 35, 70 50 Z" stroke="#2563eb" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" opacity="0.85" />
+  
+  <!-- Shared Intersection Accent -->
+  <circle cx="50" cy="50" r="6" fill="#e85d4a" />
 </svg>

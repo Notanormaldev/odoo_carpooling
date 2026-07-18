@@ -32,8 +32,8 @@ const CITIES = [
   { label: 'BHRL (BHARUCH)', name: 'bharuch', lat: 21.7051, lng: 72.9959 }
 ];
 
-const geocodeAddress = (address, isDestination = false) => {
-  if (!address) return isDestination ? { lat: 23.1974, lng: 72.6326 } : { lat: 23.0225, lng: 72.5714 };
+const geocodeAddress = (address) => {
+  if (!address) return null;
   const clean = address.toLowerCase().trim();
 
   // Try predefined cities match
@@ -42,45 +42,35 @@ const geocodeAddress = (address, isDestination = false) => {
     clean.includes(c.label.toLowerCase()) ||
     (c.label.split(' ')[0] && clean === c.label.split(' ')[0].toLowerCase())
   );
-  if (matched) {
-    return { lat: matched.lat, lng: matched.lng };
-  }
+  if (matched) return { lat: matched.lat, lng: matched.lng };
 
-  if (clean.includes('infocity')) {
-    return { lat: 23.1974, lng: 72.6326 };
-  }
-  if (clean.includes('iskcon')) {
-    return { lat: 23.0225, lng: 72.5714 };
-  }
-  if (clean.includes('c g road') || clean.includes('cg road')) {
-    return { lat: 23.0258, lng: 72.5594 };
-  }
-  if (clean.includes('sector 21')) {
-    return { lat: 23.2244, lng: 72.6489 };
-  }
-  if (clean.includes('gift city')) {
-    return { lat: 23.1594, lng: 72.6844 };
-  }
-  if (clean.includes('sargasan')) {
-    return { lat: 23.1947, lng: 72.6105 };
-  }
-  if (clean.includes('vastrapur')) {
-    return { lat: 23.0379, lng: 72.5273 };
-  }
-  if (clean.includes('prahlad')) {
-    return { lat: 22.9982, lng: 72.5034 };
-  }
-  if (clean.includes('chandkheda')) {
-    return { lat: 23.1118, lng: 72.5855 };
-  }
+  if (clean.includes('infocity')) return { lat: 23.1974, lng: 72.6326 };
+  if (clean.includes('iskcon')) return { lat: 23.0225, lng: 72.5714 };
+  if (clean.includes('c g road') || clean.includes('cg road')) return { lat: 23.0258, lng: 72.5594 };
+  if (clean.includes('sector 21')) return { lat: 23.2244, lng: 72.6489 };
+  if (clean.includes('gift city')) return { lat: 23.1594, lng: 72.6844 };
+  if (clean.includes('sargasan')) return { lat: 23.1947, lng: 72.6105 };
+  if (clean.includes('vastrapur')) return { lat: 23.0379, lng: 72.5273 };
+  if (clean.includes('prahlad')) return { lat: 22.9982, lng: 72.5034 };
+  if (clean.includes('chandkheda')) return { lat: 23.1118, lng: 72.5855 };
 
-  const hash = address.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const baseLat = isDestination ? 23.1974 : 23.0225;
-  const baseLng = isDestination ? 72.6326 : 72.5714;
-  const offsetLat = ((hash % 100) / 1000) - 0.05;
-  const offsetLng = ((hash % 80) / 1000) - 0.04;
+  // No match — return null (caller must handle via async Nominatim)
+  return null;
+};
 
-  return { lat: baseLat + offsetLat, lng: baseLng + offsetLng };
+const nominatimGeocode = async (address) => {
+  if (!address) return null;
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address + ', Gujarat, India')}&limit=1&countrycodes=in`;
+    const res = await fetch(url, { headers: { 'User-Agent': 'odoo-carpooling-app' } });
+    const data = await res.json();
+    if (data && data.length > 0) {
+      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+    }
+  } catch (err) {
+    console.error('Nominatim geocode error:', err);
+  }
+  return null;
 };
 
 export default function DashboardView() {
@@ -223,15 +213,22 @@ export default function DashboardView() {
     if (e) e.preventDefault();
     setLoading(true);
     try {
-      let queryParams = `seats=${seats}&date=${date}`;
+      let queryParams = `seats=${seats}`;
+      if (date) queryParams += `&date=${date}`;
+
       if (pickup) {
-        const start = pickupCoords || geocodeAddress(pickup, false);
-        queryParams += `&lat=${start.lat}&lng=${start.lng}`;
+        // Use cached coords from suggestion click, or try static lookup, or async Nominatim
+        let startCoords = pickupCoords || geocodeAddress(pickup);
+        if (!startCoords) startCoords = await nominatimGeocode(pickup);
+        if (startCoords) queryParams += `&lat=${startCoords.lat}&lng=${startCoords.lng}`;
       }
+
       if (destination) {
-        const dest = destCoords || geocodeAddress(destination, true);
-        queryParams += `&destLat=${dest.lat}&destLng=${dest.lng}`;
+        let dstCoords = destCoords || geocodeAddress(destination);
+        if (!dstCoords) dstCoords = await nominatimGeocode(destination);
+        if (dstCoords) queryParams += `&destLat=${dstCoords.lat}&destLng=${dstCoords.lng}`;
       }
+
       const res = await api.get(`/rides/search?${queryParams}`);
       setRides(res.data.data);
       if (res.data.data.length === 0) {
@@ -249,7 +246,9 @@ export default function DashboardView() {
   const handleViewAllRides = async () => {
     setLoading(true);
     try {
-      const res = await api.get(`/rides/search?seats=${seats}&date=${date}`);
+      let queryParams = `seats=${seats}`;
+      if (date) queryParams += `&date=${date}`;
+      const res = await api.get(`/rides/search?${queryParams}`);
       setRides(res.data.data);
       if (res.data.data.length === 0) {
         setMsg('No available rides matching your criteria.');

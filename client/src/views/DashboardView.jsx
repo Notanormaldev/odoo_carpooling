@@ -1,18 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Shield, X, Loader } from 'lucide-react';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import * as maptilersdk from '@maptiler/sdk';
 import toast from 'react-hot-toast';
 import useAuthStore from '../store/authStore';
 import api from '../api/axios';
 
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
+maptilersdk.config.apiKey = import.meta.env.VITE_MAPTILER_API_KEY || 'RL13CDEQU2gZu8sIcdc0';
 
 const CITIES = [
   { label: 'AHM (AHMEDABAD)', name: 'ahmedabad', lat: 23.0225, lng: 72.5714 },
@@ -41,11 +35,11 @@ const CITIES = [
 const geocodeAddress = (address, isDestination = false) => {
   if (!address) return isDestination ? { lat: 23.1974, lng: 72.6326 } : { lat: 23.0225, lng: 72.5714 };
   const clean = address.toLowerCase().trim();
-  
+
   // Try predefined cities match
-  const matched = CITIES.find(c => 
-    clean.includes(c.name) || 
-    clean.includes(c.label.toLowerCase()) || 
+  const matched = CITIES.find(c =>
+    clean.includes(c.name) ||
+    clean.includes(c.label.toLowerCase()) ||
     (c.label.split(' ')[0] && clean === c.label.split(' ')[0].toLowerCase())
   );
   if (matched) {
@@ -85,7 +79,7 @@ const geocodeAddress = (address, isDestination = false) => {
   const baseLng = isDestination ? 72.6326 : 72.5714;
   const offsetLat = ((hash % 100) / 1000) - 0.05;
   const offsetLng = ((hash % 80) / 1000) - 0.04;
-  
+
   return { lat: baseLat + offsetLat, lng: baseLng + offsetLng };
 };
 
@@ -109,56 +103,100 @@ export default function DashboardView() {
   const [showPickupSuggestions, setShowPickupSuggestions] = useState(false);
   const [destSuggestions, setDestSuggestions] = useState([]);
   const [showDestSuggestions, setShowDestSuggestions] = useState(false);
+  const [pickupCoords, setPickupCoords] = useState(null);
+  const [destCoords, setDestCoords] = useState(null);
+
+  const fetchAddressSuggestions = async (query) => {
+    if (!query || query.length < 3) return [];
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ', Gujarat')}&limit=5&countrycodes=in`;
+      const res = await fetch(url, {
+        headers: { 'User-Agent': 'odoo-carpooling-app' }
+      });
+      const data = await res.json();
+      return data.map(item => ({
+        label: item.display_name.split(',').slice(0, 3).join(','),
+        fullAddress: item.display_name,
+        lat: parseFloat(item.lat),
+        lng: parseFloat(item.lon)
+      }));
+    } catch (err) {
+      console.error('Error fetching suggestions:', err);
+      return [];
+    }
+  };
+
+  useEffect(() => {
+    const q = pickup.trim();
+    if (!q) {
+      setPickupSuggestions(CITIES.slice(0, 5));
+      return;
+    }
+    const timer = setTimeout(async () => {
+      const localMatched = CITIES.filter(c =>
+        c.label.toLowerCase().includes(q.toLowerCase()) ||
+        c.name.toLowerCase().includes(q.toLowerCase())
+      );
+      const remoteMatched = await fetchAddressSuggestions(q);
+      const combined = [...localMatched];
+      remoteMatched.forEach(rm => {
+        if (!combined.some(c => c.label.toLowerCase().includes(rm.label.toLowerCase()))) {
+          combined.push({
+            label: rm.label,
+            name: rm.label.toLowerCase(),
+            lat: rm.lat,
+            lng: rm.lng
+          });
+        }
+      });
+      setPickupSuggestions(combined.slice(0, 6));
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [pickup]);
+
+  useEffect(() => {
+    const q = destination.trim();
+    if (!q) {
+      setDestSuggestions(CITIES.slice(0, 5));
+      return;
+    }
+    const timer = setTimeout(async () => {
+      const localMatched = CITIES.filter(c =>
+        c.label.toLowerCase().includes(q.toLowerCase()) ||
+        c.name.toLowerCase().includes(q.toLowerCase())
+      );
+      const remoteMatched = await fetchAddressSuggestions(q);
+      const combined = [...localMatched];
+      remoteMatched.forEach(rm => {
+        if (!combined.some(c => c.label.toLowerCase().includes(rm.label.toLowerCase()))) {
+          combined.push({
+            label: rm.label,
+            name: rm.label.toLowerCase(),
+            lat: rm.lat,
+            lng: rm.lng
+          });
+        }
+      });
+      setDestSuggestions(combined.slice(0, 6));
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [destination]);
 
   const handlePickupChange = (val) => {
     setPickup(val);
-    if (!val.trim()) {
-      setPickupSuggestions(CITIES.slice(0, 5));
-    } else {
-      const filtered = CITIES.filter(c => 
-        c.label.toLowerCase().includes(val.toLowerCase()) || 
-        c.name.toLowerCase().includes(val.toLowerCase())
-      );
-      setPickupSuggestions(filtered);
-    }
+    setPickupCoords(null);
   };
 
   const handleDestChange = (val) => {
     setDestination(val);
-    if (!val.trim()) {
-      setDestSuggestions(CITIES.slice(0, 5));
-    } else {
-      const filtered = CITIES.filter(c => 
-        c.label.toLowerCase().includes(val.toLowerCase()) || 
-        c.name.toLowerCase().includes(val.toLowerCase())
-      );
-      setDestSuggestions(filtered);
-    }
+    setDestCoords(null);
   };
 
   const handlePickupFocus = () => {
-    if (!pickup.trim()) {
-      setPickupSuggestions(CITIES.slice(0, 5));
-    } else {
-      const filtered = CITIES.filter(c => 
-        c.label.toLowerCase().includes(pickup.toLowerCase()) || 
-        c.name.toLowerCase().includes(pickup.toLowerCase())
-      );
-      setPickupSuggestions(filtered);
-    }
     setShowPickupSuggestions(true);
   };
 
   const handleDestFocus = () => {
-    if (!destination.trim()) {
-      setDestSuggestions(CITIES.slice(0, 5));
-    } else {
-      const filtered = CITIES.filter(c => 
-        c.label.toLowerCase().includes(destination.toLowerCase()) || 
-        c.name.toLowerCase().includes(destination.toLowerCase())
-      );
-      setDestSuggestions(filtered);
-    }
     setShowDestSuggestions(true);
   };
 
@@ -183,6 +221,32 @@ export default function DashboardView() {
 
   const handleSearch = async (e) => {
     if (e) e.preventDefault();
+    setLoading(true);
+    try {
+      let queryParams = `seats=${seats}&date=${date}`;
+      if (pickup) {
+        const start = pickupCoords || geocodeAddress(pickup, false);
+        queryParams += `&lat=${start.lat}&lng=${start.lng}`;
+      }
+      if (destination) {
+        const dest = destCoords || geocodeAddress(destination, true);
+        queryParams += `&destLat=${dest.lat}&destLng=${dest.lng}`;
+      }
+      const res = await api.get(`/rides/search?${queryParams}`);
+      setRides(res.data.data);
+      if (res.data.data.length === 0) {
+        setMsg('No available rides matching your criteria.');
+      } else {
+        setMsg('');
+      }
+    } catch (err) {
+      setMsg('Error searching for rides.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleViewAllRides = async () => {
     setLoading(true);
     try {
       const res = await api.get(`/rides/search?seats=${seats}&date=${date}`);
@@ -228,67 +292,76 @@ export default function DashboardView() {
     setTimeout(() => {
       if (!mapContainerRef.current || mapRef.current) return;
       try {
-        const start = geocodeAddress(pickup, false);
-        const dest = geocodeAddress(destination, true);
+        const start = pickupCoords || geocodeAddress(pickup, false);
+        const dest = destCoords || geocodeAddress(destination, true);
         const startLat = start.lat;
         const startLng = start.lng;
         const destLat = dest.lat;
         const destLng = dest.lng;
 
-        mapRef.current = L.map(mapContainerRef.current).setView([startLat, startLng], 11);
-
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(mapRef.current);
-
-        const greenIcon = new L.Icon({
-          iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-          iconSize: [25, 41],
-          iconAnchor: [12, 41],
-          popupAnchor: [1, -34],
-          shadowSize: [41, 41]
+        mapRef.current = new maptilersdk.Map({
+          container: mapContainerRef.current,
+          style: maptilersdk.MapStyle.STREETS,
+          center: [startLng, startLat],
+          zoom: 11,
         });
 
-        const redIcon = new L.Icon({
-          iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-          iconSize: [25, 41],
-          iconAnchor: [12, 41],
-          popupAnchor: [1, -34],
-          shadowSize: [41, 41]
+        // Add Start marker (Green)
+        new maptilersdk.Marker({ color: "#22c55e" })
+          .setLngLat([startLng, startLat])
+          .addTo(mapRef.current);
+
+        // Add Destination marker (Coral Red)
+        new maptilersdk.Marker({ color: "#e85d4a" })
+          .setLngLat([destLng, destLat])
+          .addTo(mapRef.current);
+
+        mapRef.current.on('load', () => {
+          if (!mapRef.current) return;
+          mapRef.current.addSource('route', {
+            type: 'geojson',
+            data: {
+              type: 'Feature',
+              properties: {},
+              geometry: {
+                type: 'LineString',
+                coordinates: [
+                  [startLng, startLat],
+                  [destLng, destLat]
+                ]
+              }
+            }
+          });
+          mapRef.current.addLayer({
+            id: 'route',
+            type: 'line',
+            source: 'route',
+            layout: {
+              'line-join': 'round',
+              'line-cap': 'round'
+            },
+            paint: {
+              'line-color': '#e85d4a',
+              'line-width': 4
+            }
+          });
+
+          const bounds = new maptilersdk.LngLatBounds();
+          bounds.extend([startLng, startLat]);
+          bounds.extend([destLng, destLat]);
+          mapRef.current.fitBounds(bounds, { padding: 40 });
         });
-
-        L.marker([startLat, startLng], { icon: greenIcon })
-          .addTo(mapRef.current)
-          .bindPopup(`<b>Start:</b> ${pickup}`);
-
-        L.marker([destLat, destLng], { icon: redIcon })
-          .addTo(mapRef.current)
-          .bindPopup(`<b>Destination:</b> ${destination}`);
-
-        L.polyline([[startLat, startLng], [destLat, destLng]], {
-          color: '#e85d4a',
-          weight: 4,
-          opacity: 0.8
-        }).addTo(mapRef.current);
-
-        const bounds = L.latLngBounds([
-          [startLat, startLng],
-          [destLat, destLng]
-        ]);
-        mapRef.current.fitBounds(bounds, { padding: [40, 40] });
       } catch (err) {
         console.error('Dashboard Map initialization error:', err);
       }
-    }, 100);
+    }, 200);
   };
 
   const handleConfirmPublish = async () => {
     setLoading(true);
     try {
-      const start = geocodeAddress(pickup, false);
-      const dest = geocodeAddress(destination, true);
+      const start = pickupCoords || geocodeAddress(pickup, false);
+      const dest = destCoords || geocodeAddress(destination, true);
       const dateTime = new Date(`${date}T08:00:00Z`).toISOString();
       await api.post('/rides', {
         vehicleId: selectedVehicle,
@@ -302,6 +375,8 @@ export default function DashboardView() {
       handleCloseConfirmRoute();
       setPickup('');
       setDestination('');
+      setPickupCoords(null);
+      setDestCoords(null);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Error publishing ride');
     } finally {
@@ -324,13 +399,13 @@ export default function DashboardView() {
       {/* Tab toggle */}
       <div className="flex border-b border-slate-200"
       >
-        <button 
+        <button
           onClick={() => { setActiveTab('find'); handleCloseConfirmRoute(); }}
           className={`pb-4 px-6 font-bold text-sm border-b-2 transition-all cursor-pointer ${activeTab === 'find' ? 'border-[#e85d4a] text-[#e85d4a]' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
         >
           Find Ride
         </button>
-        <button 
+        <button
           onClick={() => { setActiveTab('offer'); handleCloseConfirmRoute(); }}
           className={`pb-4 px-6 font-bold text-sm border-b-2 transition-all cursor-pointer ${activeTab === 'offer' ? 'border-[#e85d4a] text-[#e85d4a]' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
         >
@@ -352,7 +427,7 @@ export default function DashboardView() {
               <p className="text-slate-400">Total Route Cost</p>
               <p className="font-bold text-slate-800 text-lg">₹{fareOffer} / Seat</p>
             </div>
-            <button 
+            <button
               onClick={handleConfirmPublish}
               disabled={loading}
               className="bg-[#e85d4a] hover:bg-[#d94d3a] text-white text-sm font-semibold px-6 py-2.5 rounded shadow-sm transition-all cursor-pointer"
@@ -386,6 +461,7 @@ export default function DashboardView() {
                           key={`find-pickup-${c.name}`}
                           onMouseDown={() => {
                             setPickup(c.label);
+                            setPickupCoords({ lat: c.lat, lng: c.lng });
                             setShowPickupSuggestions(false);
                           }}
                           className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#e85d4a] cursor-pointer transition-colors"
@@ -418,6 +494,7 @@ export default function DashboardView() {
                           key={`find-dest-${c.name}`}
                           onMouseDown={() => {
                             setDestination(c.label);
+                            setDestCoords({ lat: c.lat, lng: c.lng });
                             setShowDestSuggestions(false);
                           }}
                           className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#e85d4a] cursor-pointer transition-colors"
@@ -454,9 +531,18 @@ export default function DashboardView() {
                 </div>
               </div>
 
-              <button type="submit" className="w-full bg-[#e85d4a] hover:bg-[#d94d3a] text-white py-3 rounded text-sm font-semibold transition-colors shadow-sm cursor-pointer">
-                Find Ride
-              </button>
+              <div className="space-y-2">
+                <button type="submit" className="w-full bg-[#e85d4a] hover:bg-[#d94d3a] text-white py-3 rounded text-sm font-semibold transition-colors shadow-sm cursor-pointer">
+                  Find Ride
+                </button>
+                <button 
+                  type="button" 
+                  onClick={handleViewAllRides}
+                  className="w-full bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 py-2.5 rounded text-xs font-semibold transition-colors shadow-sm cursor-pointer"
+                >
+                  View All Available Rides
+                </button>
+              </div>
             </form>
 
             <div className="mt-4 pt-4 border-t border-slate-100 space-y-2">
@@ -512,7 +598,7 @@ export default function DashboardView() {
                     <div className="space-y-2">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-xs font-bold uppercase text-slate-600">
-                          {r.driverId?.name?.slice(0,2)}
+                          {r.driverId?.name?.slice(0, 2)}
                         </div>
                         <div>
                           <p className="text-sm font-bold text-slate-800">{r.driverId?.name}</p>
@@ -547,7 +633,7 @@ export default function DashboardView() {
                   : 'To offer and publish ride pools, register your driving license details for enterprise security.'}
               </p>
             </div>
-            
+
             {user?.drivingLicenseStatus !== 'pending' && (
               <form onSubmit={handleDlSubmit} className="space-y-4">
                 <div>
@@ -562,8 +648,8 @@ export default function DashboardView() {
                   />
                 </div>
 
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   disabled={dlSubmitting}
                   className="w-full bg-[#e85d4a] hover:bg-[#d94d3a] text-white py-3 rounded text-sm font-semibold transition-colors shadow-sm cursor-pointer"
                 >
@@ -578,7 +664,7 @@ export default function DashboardView() {
               <h3 className="font-bold text-slate-800 text-sm">Offer Ride Details</h3>
               <span className="text-[10px] text-slate-400 font-bold uppercase bg-slate-50 px-2 py-1 rounded">Verified Driver: {user.drivingLicense}</span>
             </div>
-            
+
             <form onSubmit={handlePublishClick} className="space-y-4">
               <div>
                 <label className="block text-xs text-slate-400 mb-2 font-medium">Select Vehicle</label>
@@ -613,6 +699,7 @@ export default function DashboardView() {
                           key={`pub-pickup-${c.name}`}
                           onMouseDown={() => {
                             setPickup(c.label);
+                            setPickupCoords({ lat: c.lat, lng: c.lng });
                             setShowPickupSuggestions(false);
                           }}
                           className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#e85d4a] cursor-pointer transition-colors"
@@ -645,6 +732,7 @@ export default function DashboardView() {
                           key={`pub-dest-${c.name}`}
                           onMouseDown={() => {
                             setDestination(c.label);
+                            setDestCoords({ lat: c.lat, lng: c.lng });
                             setShowDestSuggestions(false);
                           }}
                           className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#e85d4a] cursor-pointer transition-colors"

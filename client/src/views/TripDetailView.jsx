@@ -1,20 +1,14 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Loader, ChevronLeft, Download, Send, X } from 'lucide-react';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import * as maptilersdk from '@maptiler/sdk';
 import toast from 'react-hot-toast';
 import useAuthStore from '../store/authStore';
 import api from '../api/axios';
 import { io } from 'socket.io-client';
 import { jsPDF } from 'jspdf';
 
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
+maptilersdk.config.apiKey = import.meta.env.VITE_MAPTILER_API_KEY || 'RL13CDEQU2gZu8sIcdc0';
 
 export default function TripDetailView() {
   const { id } = useParams();
@@ -28,7 +22,10 @@ export default function TripDetailView() {
   const mapRef = useRef(null);
   const socketRef = useRef(null);
   const chatEndRef = useRef(null);
+  const driverMarkerRef = useRef(null);
+  const simIntervalRef = useRef(null);
   const navigate = useNavigate();
+  const [isSimulating, setIsSimulating] = useState(false);
 
   const tripId = id || window.location.pathname.split('/').pop();
 
@@ -40,8 +37,8 @@ export default function TripDetailView() {
     if (!tripId) return;
 
     const token = localStorage.getItem('accessToken');
-    const socketUrl = window.location.hostname === 'localhost' 
-      ? 'http://localhost:5000' 
+    const socketUrl = window.location.hostname === 'localhost'
+      ? 'http://localhost:5000'
       : `${window.location.protocol}//${window.location.hostname}:5000`;
 
     // Connect socket
@@ -54,6 +51,7 @@ export default function TripDetailView() {
 
     // Join room
     socket.emit('join_chat_room', { tripId });
+    socket.emit('join_tracking_room', { tripId });
 
     // Listen for history
     socket.on('chat_history', (history) => {
@@ -65,6 +63,23 @@ export default function TripDetailView() {
       setChatMessages((prev) => [...prev, msg]);
     });
 
+    // Listen for driver location tracking
+    socket.on('location_update', (loc) => {
+      const { lat, lng } = loc;
+      if (mapRef.current) {
+        if (driverMarkerRef.current) {
+          driverMarkerRef.current.setLngLat([lng, lat]);
+        } else {
+          driverMarkerRef.current = new maptilersdk.Marker({ color: "#2563eb" })
+            .setLngLat([lng, lat])
+            .setPopup(new maptilersdk.Popup().setHTML("<b>Driver Current Location</b>"))
+            .addTo(mapRef.current)
+            .togglePopup();
+        }
+        mapRef.current.panTo([lng, lat]);
+      }
+    });
+
     socket.on('chat_error', (err) => {
       console.error('Socket chat error:', err.message);
       toast.error(err.message || 'Chat error occurred');
@@ -72,7 +87,9 @@ export default function TripDetailView() {
 
     // Cleanup on unmount
     return () => {
+      if (simIntervalRef.current) clearInterval(simIntervalRef.current);
       socket.emit('leave_chat_room', { tripId });
+      socket.emit('leave_tracking_room', { tripId });
       socket.disconnect();
     };
   }, [tripId]);
@@ -95,56 +112,75 @@ export default function TripDetailView() {
   useEffect(() => {
     if (!trip) return;
     const timer = setTimeout(() => {
-      if (!mapContainerRef.current || mapRef.current) return;
+      if (!mapContainerRef.current) return;
+      if (mapRef.current) {
+        try {
+          mapRef.current.remove();
+        } catch (e) {
+          console.error('Error removing old map in TripDetail:', e);
+        }
+        mapRef.current = null;
+      }
       try {
         const startLat = trip.rideId?.startLocation?.lat || 23.0225;
         const startLng = trip.rideId?.startLocation?.lng || 72.5714;
         const destLat = trip.rideId?.destination?.lat || 23.1974;
         const destLng = trip.rideId?.destination?.lng || 72.6326;
 
-        mapRef.current = L.map(mapContainerRef.current).setView([startLat, startLng], 11);
-
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(mapRef.current);
-
-        const greenIcon = new L.Icon({
-          iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-          iconSize: [25, 41],
-          iconAnchor: [12, 41],
-          popupAnchor: [1, -34],
-          shadowSize: [41, 41]
+        mapRef.current = new maptilersdk.Map({
+          container: mapContainerRef.current,
+          style: maptilersdk.MapStyle.STREETS,
+          center: [startLng, startLat],
+          zoom: 11,
         });
 
-        const redIcon = new L.Icon({
-          iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-          iconSize: [25, 41],
-          iconAnchor: [12, 41],
-          popupAnchor: [1, -34],
-          shadowSize: [41, 41]
+        // Add Start marker (Green)
+        new maptilersdk.Marker({ color: "#22c55e" })
+          .setLngLat([startLng, startLat])
+          .setPopup(new maptilersdk.Popup().setHTML(`<b>Start:</b> ${trip.rideId?.startLocation?.address || 'Pickup Point'}`))
+          .addTo(mapRef.current);
+
+        // Add Destination marker (Coral Red)
+        new maptilersdk.Marker({ color: "#e85d4a" })
+          .setLngLat([destLng, destLat])
+          .setPopup(new maptilersdk.Popup().setHTML(`<b>Destination:</b> ${trip.rideId?.destination?.address || 'Destination'}`))
+          .addTo(mapRef.current);
+
+        mapRef.current.on('load', () => {
+          if (!mapRef.current) return;
+          mapRef.current.addSource('route', {
+            type: 'geojson',
+            data: {
+              type: 'Feature',
+              properties: {},
+              geometry: {
+                type: 'LineString',
+                coordinates: [
+                  [startLng, startLat],
+                  [destLng, destLat]
+                ]
+              }
+            }
+          });
+          mapRef.current.addLayer({
+            id: 'route',
+            type: 'line',
+            source: 'route',
+            layout: {
+              'line-join': 'round',
+              'line-cap': 'round'
+            },
+            paint: {
+              'line-color': '#e85d4a',
+              'line-width': 4
+            }
+          });
+
+          const bounds = new maptilersdk.LngLatBounds();
+          bounds.extend([startLng, startLat]);
+          bounds.extend([destLng, destLat]);
+          mapRef.current.fitBounds(bounds, { padding: 50 });
         });
-
-        L.marker([startLat, startLng], { icon: greenIcon })
-          .addTo(mapRef.current)
-          .bindPopup(`<b>Start:</b> ${trip.rideId?.startLocation?.address || 'Pickup Point'}`);
-
-        L.marker([destLat, destLng], { icon: redIcon })
-          .addTo(mapRef.current)
-          .bindPopup(`<b>Destination:</b> ${trip.rideId?.destination?.address || 'Destination'}`);
-
-        L.polyline([[startLat, startLng], [destLat, destLng]], {
-          color: '#e85d4a',
-          weight: 4,
-          opacity: 0.8
-        }).addTo(mapRef.current);
-
-        const bounds = L.latLngBounds([
-          [startLat, startLng],
-          [destLat, destLng]
-        ]);
-        mapRef.current.fitBounds(bounds, { padding: [50, 50] });
       } catch (err) {
         console.error('Trip Detail Map initialization error:', err);
       }
@@ -155,6 +191,7 @@ export default function TripDetailView() {
         mapRef.current.remove();
         mapRef.current = null;
       }
+      driverMarkerRef.current = null;
     };
   }, [trip]);
 
@@ -300,6 +337,60 @@ export default function TripDetailView() {
     return <div className="p-8 text-center text-slate-400">Trip not found.</div>;
   }
 
+  const handleToggleSimulation = () => {
+    if (isSimulating) {
+      clearInterval(simIntervalRef.current);
+      setIsSimulating(false);
+      toast.success('Simulation stopped');
+    } else {
+      setIsSimulating(true);
+      toast.success('Starting driver simulation...');
+
+      const startLat = trip.rideId?.startLocation?.lat || 23.0225;
+      const startLng = trip.rideId?.startLocation?.lng || 72.5714;
+      const destLat = trip.rideId?.destination?.lat || 23.1974;
+      const destLng = trip.rideId?.destination?.lng || 72.6326;
+
+      let step = 0;
+      const totalSteps = 20;
+
+      // Broadcast start coordinate immediately
+      if (socketRef.current) {
+        socketRef.current.emit('update_driver_location', {
+          tripId,
+          lat: startLat,
+          lng: startLng,
+          speed: 45,
+          bearing: 0
+        });
+      }
+
+      simIntervalRef.current = setInterval(() => {
+        step += 1;
+        if (step > totalSteps) {
+          clearInterval(simIntervalRef.current);
+          setIsSimulating(false);
+          toast.success('Simulation finished! Arrived at destination.');
+          return;
+        }
+
+        const ratio = step / totalSteps;
+        const currentLat = startLat + (destLat - startLat) * ratio;
+        const currentLng = startLng + (destLng - startLng) * ratio;
+
+        if (socketRef.current) {
+          socketRef.current.emit('update_driver_location', {
+            tripId,
+            lat: currentLat,
+            lng: currentLng,
+            speed: 55,
+            bearing: 90
+          });
+        }
+      }, 1500);
+    }
+  };
+
   const isDriver = user._id === trip.driverId._id;
 
   return (
@@ -317,13 +408,21 @@ export default function TripDetailView() {
           </div>
 
           <div className="flex gap-2">
-            <button 
+            <button
               onClick={handleDownloadInvoice}
               className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-4 py-2 rounded flex items-center gap-2 cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" /> Invoice
             </button>
 
+            {isDriver && (trip.status === 'started' || trip.status === 'in_progress') && (
+              <button
+                onClick={handleToggleSimulation}
+                className={`text-xs font-semibold px-4 py-2 rounded cursor-pointer transition-all ${isSimulating ? 'bg-slate-700 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
+              >
+                {isSimulating ? 'Stop Simulation' : 'Simulate Drive 🚗'}
+              </button>
+            )}
             {!isDriver && trip.status === 'booked' && (
               <button onClick={() => setShowQR(true)} className="bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold px-4 py-2 rounded cursor-pointer">
                 Show QR
@@ -394,7 +493,7 @@ export default function TripDetailView() {
         {/* Map and Chat section */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div ref={mapContainerRef} className="md:col-span-2 h-72 bg-slate-100 rounded border border-slate-200 relative overflow-hidden"></div>
-          
+
           <div className="border border-slate-200 rounded flex flex-col h-72 bg-white shadow-2xs">
             <div className="p-3 border-b border-slate-200 font-bold text-xs text-slate-700 bg-slate-50">Live Chat</div>
             <div className="flex-1 p-3 overflow-y-auto space-y-3 text-xs min-h-0">
@@ -403,11 +502,10 @@ export default function TripDetailView() {
                 return (
                   <div key={i} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
                     <span className="text-[9px] text-slate-400 font-bold mb-0.5 px-1">{m.senderName}</span>
-                    <p className={`p-2.5 rounded-xl max-w-[85%] shadow-2xs break-words ${
-                      isMe 
-                        ? 'bg-[#e85d4a] text-white rounded-tr-none font-medium' 
+                    <p className={`p-2.5 rounded-xl max-w-[85%] shadow-2xs break-words ${isMe
+                        ? 'bg-[#e85d4a] text-white rounded-tr-none font-medium'
                         : 'bg-slate-100 text-slate-700 rounded-tl-none font-medium'
-                    }`}>
+                      }`}>
                       {m.message}
                     </p>
                   </div>
@@ -416,12 +514,12 @@ export default function TripDetailView() {
               <div ref={chatEndRef} />
             </div>
             <form onSubmit={handleSendMessage} className="p-2 border-t border-slate-200 flex gap-2 bg-slate-50">
-              <input 
-                type="text" 
-                placeholder="Type message..." 
-                value={typedMessage} 
-                onChange={(e) => setTypedMessage(e.target.value)} 
-                className="bg-white border border-slate-200 px-3 py-2 text-xs rounded-lg focus:outline-none focus:border-[#e85d4a] flex-1 shadow-2xs" 
+              <input
+                type="text"
+                placeholder="Type message..."
+                value={typedMessage}
+                onChange={(e) => setTypedMessage(e.target.value)}
+                className="bg-white border border-slate-200 px-3 py-2 text-xs rounded-lg focus:outline-none focus:border-[#e85d4a] flex-1 shadow-2xs"
               />
               <button type="submit" className="bg-[#e85d4a] hover:bg-[#d94d3a] text-white p-2.5 rounded-lg shadow-sm transition-colors cursor-pointer flex items-center justify-center">
                 <Send className="w-3.5 h-3.5" />

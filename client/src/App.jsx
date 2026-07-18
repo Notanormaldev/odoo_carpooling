@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Loader } from 'lucide-react';
+import '@maptiler/sdk/dist/maptiler-sdk.css';
 import useAuthStore from './store/authStore';
 
 // Components

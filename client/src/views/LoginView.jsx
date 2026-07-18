@@ -28,6 +28,8 @@ export default function LoginView() {
     }
   };
 
+
+
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white border border-slate-200 rounded-lg p-8 shadow-sm">
@@ -80,6 +82,23 @@ export default function LoginView() {
           >
             {loading ? 'Logging in...' : 'Log In'}
           </button>
+
+
+<div className='flex gap-10'>
+
+
+          <button className='bg-blue-100 px-3 py-1 'onClick={async(e)=>{
+setLoading(true) 
+setEmail('rajpatel@gmail.com'),
+setPassword('Password123!')
+setLoading(false)
+          }}>Admin</button>
+
+          <button>Employee</button>
+</div>
+
+ 
+
         </form>
 
         <div className="relative my-8">

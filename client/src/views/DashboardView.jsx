@@ -224,7 +224,8 @@ export default function DashboardView() {
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
       {/* Tab toggle */}
-      <div className="flex border-b border-slate-200">
+      <div className="flex border-b border-slate-200"
+      >
         <button 
           onClick={() => { setActiveTab('find'); setShowConfirmRoute(false); }}
           className={`pb-4 px-6 font-bold text-sm border-b-2 transition-all cursor-pointer ${activeTab === 'find' ? 'border-[#e85d4a] text-[#e85d4a]' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
@@ -296,7 +297,7 @@ export default function DashboardView() {
                   <label className="block text-xs text-slate-400 mb-2 font-medium">Date</label>
                   <input
                     type="date"
-                    required
+                    // required
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-2.5 text-xs focus:outline-none focus:border-[#e85d4a]"

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Shield, X, Loader } from 'lucide-react';
+import { Search, Shield, X, Loader, Car, Check } from 'lucide-react';
 import * as maptilersdk from '@maptiler/sdk';
 import toast from 'react-hot-toast';
 import useAuthStore from '../store/authStore';
@@ -78,6 +78,8 @@ export default function DashboardView() {
   const [date, setDate] = useState('');
   const [seats, setSeats] = useState(1);
   const [rides, setRides] = useState([]);
+  const [myRides, setMyRides] = useState([]);
+  const [myRidesLoading, setMyRidesLoading] = useState(false);
   const [vehicles, setVehicles] = useState([]);
   const [selectedVehicle, setSelectedVehicle] = useState('');
   const [fareOffer, setFareOffer] = useState(120);
@@ -92,6 +94,9 @@ export default function DashboardView() {
   const [showDestSuggestions, setShowDestSuggestions] = useState(false);
   const [pickupCoords, setPickupCoords] = useState(null);
   const [destCoords, setDestCoords] = useState(null);
+  const [cancellingRideId, setCancellingRideId] = useState(null);
+  const [confirmCancelRideId, setConfirmCancelRideId] = useState(null);
+  const [bookingSuccessData, setBookingSuccessData] = useState(null);
 
   const fetchAddressSuggestions = async (query) => {
     if (!query || query.length < 3) return [];
@@ -188,6 +193,7 @@ export default function DashboardView() {
   };
 
   const [dlNumber, setDlNumber] = useState('');
+  const [dlFile, setDlFile] = useState(null);
   const [dlSubmitting, setDlSubmitting] = useState(false);
 
   useEffect(() => {
@@ -203,6 +209,32 @@ export default function DashboardView() {
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const fetchMyRides = async () => {
+    setMyRidesLoading(true);
+    try {
+      const res = await api.get('/rides/my-rides');
+      setMyRides(res.data.data.filter(r => ['published', 'full', 'in_progress'].includes(r.status)));
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setMyRidesLoading(false);
+    }
+  };
+
+  const handleCancelRide = async (rideId) => {
+    setCancellingRideId(rideId);
+    try {
+      await api.patch(`/rides/${rideId}/cancel`);
+      toast.success('Ride cancelled successfully');
+      setMyRides(prev => prev.filter(r => r._id !== rideId));
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to cancel ride');
+    } finally {
+      setCancellingRideId(null);
+      setConfirmCancelRideId(null);
     }
   };
 
@@ -260,13 +292,28 @@ export default function DashboardView() {
   const handleDlSubmit = async (e) => {
     e.preventDefault();
     if (!dlNumber.trim()) return;
+    if (!dlFile && !user?.drivingLicensePhoto) {
+      toast.error('Please upload your driving license document photo.');
+      return;
+    }
     setDlSubmitting(true);
     try {
-      await api.patch('/users/profile', { drivingLicense: dlNumber });
+      const formData = new FormData();
+      formData.append('drivingLicense', dlNumber);
+      if (dlFile) {
+        formData.append('drivingLicensePhoto', dlFile);
+      }
+
+      await api.patch('/users/profile', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
       await loadUser();
-      toast.success('Driving license updated successfully!');
+      toast.success('Driving license uploaded! AI is analyzing your document.');
+      setDlFile(null);
     } catch (err) {
-      toast.error('Failed to save driving license');
+      toast.error(err.response?.data?.message || 'Failed to save driving license');
     } finally {
       setDlSubmitting(false);
     }
@@ -380,8 +427,13 @@ export default function DashboardView() {
 
   const handleBook = async (rideId) => {
     try {
-      await api.post('/trips/book', { rideId, seatsBooked: 1 });
-      toast.success('Ride booked! Check "My Trips" to manage it.');
+      const res = await api.post('/trips/book', { rideId, seatsBooked: 1 });
+      const tripData = res.data.data;
+      setBookingSuccessData({
+        otp: tripData.verificationOtp,
+        tripId: tripData._id,
+      });
+      toast.success('Ride booked successfully!');
       setRides(rides.filter(r => r._id !== rideId));
     } catch (err) {
       toast.error(err.response?.data?.message || 'Booking failed');
@@ -414,6 +466,7 @@ export default function DashboardView() {
             setDestination('');
             setPickupCoords(null);
             setDestCoords(null);
+            fetchMyRides();
           }}
           className={`pb-4 px-6 font-bold text-sm border-b-2 transition-all cursor-pointer ${activeTab === 'offer' ? 'border-[#e85d4a] text-[#e85d4a]' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
         >
@@ -526,7 +579,7 @@ export default function DashboardView() {
                 </div>
                 <div>
                   <label className="block text-xs text-slate-400 mb-2 font-medium">Seats</label>
-                   <input
+                  <input
                     type="number"
                     min="1"
                     value={seats}
@@ -545,8 +598,8 @@ export default function DashboardView() {
                   {loading ? (
                     <>
                       <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                       </svg>
                       Searching...
                     </>
@@ -644,7 +697,7 @@ export default function DashboardView() {
             {user?.drivingLicenseStatus !== 'pending' && (
               <form onSubmit={handleDlSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-xs uppercase tracking-wider text-slate-500 mb-2">Driving License Number</label>
+                  <label className="block text-xs uppercase tracking-wider text-slate-500 mb-2 font-bold">Driving License Number</label>
                   <input
                     type="text"
                     required
@@ -655,12 +708,27 @@ export default function DashboardView() {
                   />
                 </div>
 
+                <div>
+                  <label className="block text-xs uppercase tracking-wider text-slate-500 mb-2 font-bold">Upload Document Photo</label>
+                  <div className="relative w-full bg-slate-50 border border-slate-200 border-dashed rounded px-4 py-3 text-sm flex items-center justify-between hover:bg-slate-100 transition-all duration-200">
+                    <span className="text-slate-500 font-semibold truncate">
+                      {dlFile ? dlFile.name : 'Choose Image File...'}
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => setDlFile(e.target.files[0])}
+                      className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                    />
+                  </div>
+                </div>
+
                 <button
                   type="submit"
                   disabled={dlSubmitting}
                   className="w-full bg-[#e85d4a] hover:bg-[#d94d3a] text-white py-3 rounded text-sm font-semibold transition-colors shadow-sm cursor-pointer"
                 >
-                  {dlSubmitting ? 'Registering...' : 'Register Driving License'}
+                  {dlSubmitting ? 'Uploading & Verifying...' : 'Submit to AI & Verify'}
                 </button>
               </form>
             )}
@@ -829,8 +897,112 @@ export default function DashboardView() {
                 ))}
               </div>
             </div>
+
+            {/* My Offered Rides */}
+            <div className="mt-6 pt-6 border-t border-slate-100 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                  <Car className="w-3.5 h-3.5 text-[#e85d4a]" />
+                  My Offered Rides
+                </span>
+                <button
+                  onClick={fetchMyRides}
+                  className="text-[10px] text-slate-400 hover:text-[#e85d4a] font-semibold transition-colors cursor-pointer"
+                >
+                  Refresh
+                </button>
+              </div>
+
+              {myRidesLoading ? (
+                <Loader className="w-5 h-5 animate-spin text-[#e85d4a] mx-auto py-2" />
+              ) : myRides.length === 0 ? (
+                <p className="text-[11px] text-slate-400 text-center py-3">No active offered rides. Offer one above!</p>
+              ) : (
+                <div className="space-y-2">
+                  {myRides.map(r => (
+                    <div key={r._id} className="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-lg px-3 py-2.5 gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-slate-800 truncate">{r.startLocation?.address} → {r.destination?.address}</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">{new Date(r.dateTime).toLocaleString()} · ₹{r.farePerSeat}/seat · {r.availableSeats} seats left</p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${r.status === 'published' ? 'bg-green-50 text-green-600' :
+                            r.status === 'full' ? 'bg-blue-50 text-blue-600' :
+                              'bg-amber-50 text-amber-600'
+                          }`}>{r.status}</span>
+                        {r.status === 'published' && (
+                          confirmCancelRideId === r._id ? (
+                            <div className="flex items-center gap-1">
+                              <span className="text-[9px] text-slate-500 font-medium">Sure?</span>
+                              <button
+                                onClick={() => handleCancelRide(r._id)}
+                                disabled={cancellingRideId === r._id}
+                                className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-red-500 hover:bg-red-600 text-white transition-all cursor-pointer"
+                              >
+                                {cancellingRideId === r._id ? '...' : 'Yes'}
+                              </button>
+                              <button
+                                onClick={() => setConfirmCancelRideId(null)}
+                                className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-200 hover:bg-slate-300 text-slate-600 transition-all cursor-pointer"
+                              >
+                                No
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setConfirmCancelRideId(r._id)}
+                              className="text-[9px] font-bold px-2 py-1 rounded bg-red-50 hover:bg-red-100 text-red-500 border border-red-200 transition-all cursor-pointer"
+                            >
+                              Cancel
+                            </button>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )
+      )}
+
+      {bookingSuccessData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
+          <div className="bg-white border border-slate-100 rounded-xl p-6 max-w-sm w-full shadow-xl space-y-4 text-center">
+            <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto text-emerald-600">
+              <Check className="w-6 h-6" />
+            </div>
+            <h4 className="font-bold text-slate-800 text-lg">Booking Confirmed!</h4>
+            <p className="text-xs text-slate-500">
+              We have sent the boarding OTP to your registered email. Share this code with the driver to start the trip.
+            </p>
+            <div className="bg-slate-50 border border-slate-200 rounded p-4">
+              <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Boarding OTP</div>
+              <div className="text-3xl font-extrabold text-[#e85d4a] tracking-widest mt-1 select-all">
+                {bookingSuccessData.otp}
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  const id = bookingSuccessData.tripId;
+                  setBookingSuccessData(null);
+                  navigate(`/trips/${id}`);
+                }}
+                className="bg-[#e85d4a] hover:bg-[#d84d3a] text-white text-xs font-semibold px-4 py-2.5 rounded-lg flex-1 cursor-pointer transition-all"
+              >
+                Go to Trip Details
+              </button>
+              <button
+                onClick={() => setBookingSuccessData(null)}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-4 py-2.5 rounded-lg cursor-pointer transition-all"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

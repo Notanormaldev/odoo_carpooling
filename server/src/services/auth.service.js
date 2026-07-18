@@ -140,37 +140,17 @@ export const logoutUser = async (userId) => {
 export const handleGoogleUser = async ({ googleId, name, email, profilePhoto }) => {
   let user = await User.findOne({ email });
 
-  if (user) {
-    if (!user.googleId) {
-      user.googleId = googleId;
-      user.profilePhoto = user.profilePhoto || profilePhoto;
-      await user.save();
-    }
-    const tokens = generateTokenPair(user);
-    const org = await Organization.findById(user.orgId).select('name logo');
-    return { user, org, ...tokens };
+  if (!user) {
+    throw ApiError.unauthorized('Your Google account email is not registered in this system. Please contact your administrator.');
   }
 
-  // New Google user — check org domain
-  const domain = email.split('@')[1];
-  let org = await Organization.findOne({ allowedEmailDomain: domain, isActive: true });
-  if (!org && (domain === 'gmail.com' || process.env.NODE_ENVIRONMENT === 'development')) {
-    org = await Organization.findOne({ isActive: true });
+  if (!user.googleId) {
+    user.googleId = googleId;
+    user.profilePhoto = user.profilePhoto || profilePhoto;
+    await user.save();
   }
-  if (!org) throw ApiError.forbidden(`Organization not found for domain @${domain}`);
-
-  user = await User.create({
-    name,
-    email,
-    googleId,
-    profilePhoto,
-    orgId: org._id,
-    role: 'employee',
-    isEmailVerified: true,
-  });
-
-  await Organization.findByIdAndUpdate(org._id, { $inc: { totalRegisteredEmployees: 1 } });
   const tokens = generateTokenPair(user);
+  const org = await Organization.findById(user.orgId).select('name logo');
   return { user, org, ...tokens };
 };
 

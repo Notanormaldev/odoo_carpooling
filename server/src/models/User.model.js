@@ -49,7 +49,10 @@ const userSchema = new mongoose.Schema(
     department: { type: String, trim: true },
     manager: { type: String, trim: true },
     officeLocation: { type: String, trim: true },
-    profilePhoto: { type: String, default: '' },
+    profilePhoto: {
+      type: String,
+      default: 'https://imgs.search.brave.com/ULkqH4Dkkk-qfYT18nkJRCaoEbITbYy9mk59M5eiVC8/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9wcmV2/aWV3LnJlZGQuaXQv/ajV5NnA1YWkzb3ln/MS5qcGc_d2lkdGg9/MTQwJmhlaWdodD0x/NDAmYXV0bz13ZWJw/JnM9OGZhZThjNWEz/YzdjZjE1YmRhZWMy/MzQ4ZjlhM2M5ZmJl/NTRlMDU5ZA',
+    },
     drivingLicense: { type: String, default: '' },
     drivingLicensePhoto: { type: String, default: '' },
     drivingLicenseStatus: {

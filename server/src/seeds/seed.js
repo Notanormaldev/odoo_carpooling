@@ -75,7 +75,7 @@ const seedDatabase = async () => {
       department: 'Engineering',
       manager: 'Raj Patel',
       officeLocation: 'Gandhinagar HQ',
-      profilePhoto: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
+      profilePhoto: 'https://imgs.search.brave.com/ULkqH4Dkkk-qfYT18nkJRCaoEbITbYy9mk59M5eiVC8/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9wcmV2/aWV3LnJlZGQuaXQv/ajV5NnA1YWkzb3ln/MS5qcGc_d2lkdGg9/MTQwJmhlaWdodD0x/NDAmYXV0bz13ZWJw/JnM9OGZhZThjNWEz/YzdjZjE1YmRhZWMy/MzQ4ZjlhM2M5ZmJl/NTRlMDU5ZA',
       drivingLicense: 'DL-GJ-AHM-002',
       drivingLicenseStatus: 'approved',
       walletBalance: 2500,

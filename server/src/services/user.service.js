@@ -27,6 +27,9 @@ export const updateProfile = async (userId, updateData, files) => {
     updateData.drivingLicenseStatus = 'pending';
   } else if (updateData.drivingLicense && updateData.drivingLicense !== user.drivingLicense) {
     // If license number changed without uploading a new photo
+    if (!user.drivingLicensePhoto) {
+      throw ApiError.badRequest('Please upload a driving license document photo.');
+    }
     updateData.drivingLicenseStatus = 'pending';
   }
 

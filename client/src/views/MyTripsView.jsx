@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ChevronLeft, Loader } from 'lucide-react';
 import api from '../api/axios';
+import toast from 'react-hot-toast';
 
 export default function MyTripsView() {
   const [trips, setTrips] = useState([]);
@@ -43,19 +44,78 @@ export default function MyTripsView() {
         ) : (
           <div className="divide-y divide-slate-100">
             {trips.map(t => (
-              <Link to={`/trips/${t._id}`} key={t._id} className="block py-4 hover:bg-slate-50 px-3 rounded transition-all">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="font-bold text-slate-800 text-sm">{t.rideId?.startLocation?.address} to {t.rideId?.destination?.address}</h4>
+              <div key={t._id} className="py-4 px-3 hover:bg-slate-50 rounded transition-all">
+                <div className="flex items-center justify-between gap-3">
+                  <Link to={`/trips/${t._id}`} className="flex-1 min-w-0">
+                    <h4 className="font-bold text-slate-800 text-sm truncate">{t.rideId?.startLocation?.address} → {t.rideId?.destination?.address}</h4>
                     <p className="text-[10px] text-slate-400 mt-1">Departure: {new Date(t.rideId?.dateTime || t.createdAt).toLocaleString()}</p>
+                  </Link>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="text-xs font-semibold px-2 py-1 rounded bg-amber-50 text-amber-600 uppercase whitespace-nowrap">{t.status.replace('_', ' ')}</span>
+                    {['booked', 'started'].includes(t.status) && (
+                      <CancelTripButton
+                        tripId={t._id}
+                        onCancelled={() => {
+                          setTrips(prev => prev.filter(x => x._id !== t._id));
+                          toast.success('Trip cancelled successfully');
+                        }}
+                      />
+                    )}
                   </div>
-                  <span className="text-xs font-semibold px-2 py-1 rounded bg-amber-50 text-accent-amber uppercase">{t.status.replace('_', ' ')}</span>
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+function CancelTripButton({ tripId, onCancelled }) {
+  const [cancelling, setCancelling] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+
+  const handleCancel = async () => {
+    setCancelling(true);
+    try {
+      await api.patch(`/trips/${tripId}/status`, { status: 'cancelled', cancellationReason: 'Cancelled by passenger' });
+      onCancelled();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to cancel trip');
+    } finally {
+      setCancelling(false);
+      setConfirming(false);
+    }
+  };
+
+  if (confirming) {
+    return (
+      <div className="flex items-center gap-1.5">
+        <span className="text-[10px] text-slate-500 font-medium">Sure?</span>
+        <button
+          onClick={handleCancel}
+          disabled={cancelling}
+          className="text-[10px] font-bold px-2 py-1 rounded bg-red-500 hover:bg-red-600 text-white transition-all cursor-pointer"
+        >
+          {cancelling ? '...' : 'Yes'}
+        </button>
+        <button
+          onClick={() => setConfirming(false)}
+          className="text-[10px] font-bold px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 transition-all cursor-pointer"
+        >
+          No
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={() => setConfirming(true)}
+      className="text-[10px] font-bold px-2.5 py-1 rounded bg-red-50 hover:bg-red-100 text-red-500 border border-red-200 transition-all cursor-pointer whitespace-nowrap"
+    >
+      Cancel
+    </button>
   );
 }

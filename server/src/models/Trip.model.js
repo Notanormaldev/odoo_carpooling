@@ -53,6 +53,9 @@ const tripSchema = new mongoose.Schema(
       default: () => uuidv4(),
       unique: true,
     },
+    verificationOtp: {
+      type: String,
+    },
     qrVerifiedAt: { type: Date },
 
     // Trip timeline

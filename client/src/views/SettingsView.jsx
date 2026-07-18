@@ -38,6 +38,10 @@ export default function SettingsView() {
   const handleDlSubmit = async (e) => {
     e.preventDefault();
     if (!dlNumber.trim()) return;
+    if (!dlFile && !user?.drivingLicensePhoto) {
+      toast.error('Please upload your driving license document photo.');
+      return;
+    }
     setDlSubmitting(true);
     try {
       const formData = new FormData();
@@ -95,9 +99,6 @@ export default function SettingsView() {
                 <ChevronLeft className="w-5 h-5 text-[#e85d4a] cursor-pointer" onClick={() => navigate('/')} />
                 <h3 className="font-bold text-slate-800 text-sm">Profile & Details</h3>
               </div>
-              <span className="text-xs font-semibold px-2.5 py-1 rounded bg-[#e85d4a]/10 text-[#e85d4a] uppercase">
-                {org?.name || 'Odoo Pvt Ltd'}
-              </span>
             </div>
 
             {/* Profile Header Block */}

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Loader, ChevronLeft, Download, Send, X } from 'lucide-react';
+import { Loader, ChevronLeft, Download, Send, X, Star } from 'lucide-react';
 import * as maptilersdk from '@maptiler/sdk';
 import toast from 'react-hot-toast';
 import useAuthStore from '../store/authStore';
@@ -26,6 +26,15 @@ export default function TripDetailView() {
   const simIntervalRef = useRef(null);
   const navigate = useNavigate();
   const [isSimulating, setIsSimulating] = useState(false);
+
+  // Safety, Demo and Rating states
+  const [showBoardModal, setShowBoardModal] = useState(false);
+  const [boardCodeInput, setBoardCodeInput] = useState('');
+  const [boardingSubmit, setBoardingSubmit] = useState(false);
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [ratingStars, setRatingStars] = useState(5);
+  const [ratingComment, setRatingComment] = useState('');
+  const [submittingRating, setSubmittingRating] = useState(false);
 
   const tripId = id || window.location.pathname.split('/').pop();
 
@@ -80,6 +89,10 @@ export default function TripDetailView() {
       }
     });
 
+    socket.on('status_updated', ({ status }) => {
+      fetchTripDetails();
+    });
+
     socket.on('chat_error', (err) => {
       console.error('Socket chat error:', err.message);
       toast.error(err.message || 'Chat error occurred');
@@ -101,7 +114,15 @@ export default function TripDetailView() {
   const fetchTripDetails = async () => {
     try {
       const res = await api.get(`/trips/${tripId}`);
-      setTrip(res.data.data);
+      const tripData = res.data.data;
+      setTrip(tripData);
+
+      // Auto trigger rating popup for passenger if trip is completed and not rated
+      const isPassenger = user._id === tripData.passengerId?._id;
+      const isCompletedStatus = ['completed', 'completed_paid', 'payment_pending'].includes(tripData.status);
+      if (isPassenger && isCompletedStatus && !tripData.passengerRating) {
+        setShowRatingModal(true);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -195,15 +216,6 @@ export default function TripDetailView() {
     };
   }, [trip]);
 
-  const handleUpdateStatus = async (status) => {
-    try {
-      await api.patch(`/trips/${tripId}/status`, { status });
-      toast.success('Trip status updated');
-      fetchTripDetails();
-    } catch (err) {
-      toast.error('Failed to update status');
-    }
-  };
 
   const handleDownloadInvoice = () => {
     const doc = new jsPDF();
@@ -329,14 +341,6 @@ export default function TripDetailView() {
     setTypedMessage('');
   };
 
-  if (loading) {
-    return <div className="flex items-center justify-center py-12"><Loader className="w-6 h-6 animate-spin text-[#e85d4a]" /></div>;
-  }
-
-  if (!trip) {
-    return <div className="p-8 text-center text-slate-400">Trip not found.</div>;
-  }
-
   const handleToggleSimulation = () => {
     if (isSimulating) {
       clearInterval(simIntervalRef.current);
@@ -352,7 +356,7 @@ export default function TripDetailView() {
       const destLng = trip.rideId?.destination?.lng || 72.6326;
 
       let step = 0;
-      const totalSteps = 20;
+      const totalSteps = 10;
 
       // Broadcast start coordinate immediately
       if (socketRef.current) {
@@ -370,7 +374,7 @@ export default function TripDetailView() {
         if (step > totalSteps) {
           clearInterval(simIntervalRef.current);
           setIsSimulating(false);
-          toast.success('Simulation finished! Arrived at destination.');
+          toast.success('Simulation finished! Arrived at destination. Click "Complete Trip" to end the ride.');
           return;
         }
 
@@ -387,9 +391,61 @@ export default function TripDetailView() {
             bearing: 90
           });
         }
-      }, 1500);
+      }, 2000); // 2-second updates
     }
   };
+
+  const handleBoardSubmit = async () => {
+    if (!boardCodeInput.trim()) return;
+    setBoardingSubmit(true);
+    try {
+      const isOtp = boardCodeInput.trim().length === 6 && /^\d+$/.test(boardCodeInput.trim());
+      const payload = isOtp 
+        ? { otpCode: boardCodeInput.trim(), tripId } 
+        : { qrCode: boardCodeInput.trim(), tripId };
+      await api.post('/trips/verify-qr', payload);
+      toast.success('Passenger successfully verified and boarded!');
+      setShowBoardModal(false);
+      setBoardCodeInput('');
+      fetchTripDetails();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Verification failed. Try again.');
+    } finally {
+      setBoardingSubmit(false);
+    }
+  };
+
+  const handleUpdateStatus = async (newStatus) => {
+    try {
+      await api.patch(`/trips/${tripId}/status`, { status: newStatus });
+      toast.success(`Trip status updated to ${newStatus}`);
+      fetchTripDetails();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update trip status');
+    }
+  };
+
+  const handleRatingSubmit = async () => {
+    setSubmittingRating(true);
+    try {
+      await api.post(`/trips/${tripId}/rate`, { rating: ratingStars, comment: ratingComment });
+      toast.success('Thank you for rating your commute!');
+      setShowRatingModal(false);
+      fetchTripDetails();
+    } catch (err) {
+      toast.error('Failed to submit rating');
+    } finally {
+      setSubmittingRating(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="flex items-center justify-center py-12"><Loader className="w-6 h-6 animate-spin text-[#e85d4a]" /></div>;
+  }
+
+  if (!trip) {
+    return <div className="p-8 text-center text-slate-400">Trip not found.</div>;
+  }
 
   const isDriver = user._id === trip.driverId._id;
 
@@ -424,37 +480,108 @@ export default function TripDetailView() {
               </button>
             )}
             {!isDriver && trip.status === 'booked' && (
-              <button onClick={() => setShowQR(true)} className="bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold px-4 py-2 rounded cursor-pointer">
-                Show QR
-              </button>
+              <div className="flex items-center gap-2">
+                <div className="bg-slate-50 border border-slate-200 text-[#e85d4a] text-xs font-bold px-3 py-2 rounded select-all">
+                  Board OTP: {trip.verificationOtp || 'N/A'}
+                </div>
+              </div>
             )}
             {isDriver && trip.status === 'booked' && (
-              <button onClick={() => handleUpdateStatus('started')} className="bg-emerald-500 text-white text-xs font-semibold px-4 py-2 rounded cursor-pointer">
+              <button onClick={() => setShowBoardModal(true)} className="bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold px-4 py-2 rounded cursor-pointer">
                 Board Passenger (Verify)
               </button>
             )}
-            {trip.status === 'started' && (
-              <button onClick={() => handleUpdateStatus('in_progress')} className="bg-[#e85d4a] text-white text-xs font-semibold px-4 py-2 rounded cursor-pointer">
-                Commence Route
-              </button>
+            {isDriver && trip.status === 'started' && (
+              <div className="flex gap-2">
+                <button onClick={() => handleUpdateStatus('in_progress')} className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-4 py-2 rounded flex items-center gap-2 cursor-pointer">
+                  Commence Route
+                </button>
+                <button onClick={() => handleUpdateStatus('completed')} className="bg-[#e85d4a] hover:bg-[#d84d3a] text-white text-xs font-semibold px-4 py-2 rounded cursor-pointer">
+                  Complete Trip (End)
+                </button>
+              </div>
             )}
-            {trip.status === 'in_progress' && (
-              <button onClick={() => handleUpdateStatus('completed')} className="bg-[#e85d4a] text-white text-xs font-semibold px-4 py-2 rounded cursor-pointer">
+            {isDriver && trip.status === 'in_progress' && (
+              <button onClick={() => handleUpdateStatus('completed')} className="bg-[#e85d4a] hover:bg-[#d84d3a] text-white text-xs font-semibold px-4 py-2 rounded cursor-pointer">
                 Complete Trip
               </button>
             )}
           </div>
         </div>
 
-        {showQR && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-            <div className="bg-white border border-slate-200 rounded-lg p-6 text-center space-y-4">
-              <h3 className="font-bold">Trip QR</h3>
-              <p className="text-xs text-slate-400">Scan code to verify trip startup.</p>
-              <div className="w-40 h-40 bg-slate-100 border border-slate-200 flex items-center justify-center text-xs font-mono font-bold text-slate-700 mx-auto">
-                {trip.verificationQR?.slice(0, 8).toUpperCase() || 'VERIFY'}
+
+
+        {/* Boarding Modal */}
+        {showBoardModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
+            <div className="bg-white border border-slate-100 rounded-xl p-6 max-w-sm w-full shadow-xl space-y-4">
+              <h4 className="font-bold text-slate-800 text-base">Board Passenger</h4>
+              <p className="text-xs text-slate-400">Enter passenger's 6-digit OTP code or verification QR code string manually.</p>
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  placeholder="Enter 6-digit OTP or QR code..."
+                  value={boardCodeInput}
+                  onChange={(e) => setBoardCodeInput(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-[#e85d4a]"
+                />
+                <button
+                  onClick={handleBoardSubmit}
+                  disabled={boardingSubmit}
+                  className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-2 rounded text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  {boardingSubmit ? 'Verifying...' : 'Confirm Boarding'}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowBoardModal(false);
+                    setBoardCodeInput('');
+                  }}
+                  className="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 py-1.5 rounded text-xs font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
               </div>
-              <button onClick={() => setShowQR(false)} className="bg-[#e85d4a] text-white text-xs font-semibold px-4 py-2 rounded w-full cursor-pointer">Close</button>
+            </div>
+          </div>
+        )}
+
+        {/* Rating Review Modal */}
+        {showRatingModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
+            <div className="bg-white border border-slate-100 rounded-xl p-6 max-w-sm w-full shadow-xl space-y-4">
+              <div className="text-center space-y-2">
+                <h4 className="font-bold text-slate-800 text-base">Rate Your Commute</h4>
+                <p className="text-xs text-slate-400">Help improve security and trust by rating driver <b>{trip.driverId?.name}</b></p>
+              </div>
+
+              <div className="flex items-center justify-center gap-1.5 py-2">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Star
+                    key={star}
+                    onClick={() => setRatingStars(star)}
+                    className={`w-8 h-8 cursor-pointer transition-colors duration-150 ${star <= ratingStars ? 'fill-amber-400 text-amber-400' : 'text-slate-200'}`}
+                  />
+                ))}
+              </div>
+
+              <div className="space-y-3">
+                <textarea
+                  placeholder="Write an optional review comment..."
+                  value={ratingComment}
+                  onChange={(e) => setRatingComment(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs focus:outline-none focus:border-[#e85d4a] h-20 resize-none"
+                  maxLength={300}
+                />
+                
+                <button
+                  onClick={handleRatingSubmit}
+                  disabled={submittingRating}
+                  className="w-full bg-[#e85d4a] hover:bg-[#d94d3a] text-white py-2.5 rounded-lg text-xs font-semibold transition-colors shadow-sm cursor-pointer"
+                >
+                  {submittingRating ? 'Submitting...' : 'Submit Review'}
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -503,8 +630,8 @@ export default function TripDetailView() {
                   <div key={i} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
                     <span className="text-[9px] text-slate-400 font-bold mb-0.5 px-1">{m.senderName}</span>
                     <p className={`p-2.5 rounded-xl max-w-[85%] shadow-2xs break-words ${isMe
-                        ? 'bg-[#e85d4a] text-white rounded-tr-none font-medium'
-                        : 'bg-slate-100 text-slate-700 rounded-tl-none font-medium'
+                      ? 'bg-[#e85d4a] text-white rounded-tr-none font-medium'
+                      : 'bg-slate-100 text-slate-700 rounded-tl-none font-medium'
                       }`}>
                       {m.message}
                     </p>

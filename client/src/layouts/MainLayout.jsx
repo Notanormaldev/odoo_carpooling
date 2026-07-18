@@ -3,6 +3,7 @@ import { Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 import useAuthStore from '../store/authStore';
 import SupportChatWidget from '../components/SupportChatWidget';
+import SosWidget from '../components/SosWidget';
 
 // View Imports
 import DashboardView from '../views/DashboardView';
@@ -56,7 +57,7 @@ export default function MainLayout() {
             <div className="text-right">
               <p className="text-xs font-semibold text-slate-800 capitalize">{user?.name}</p>
             </div>
-            
+
             <div className="w-10 h-10 bg-slate-100 rounded-full overflow-hidden border border-slate-200 flex items-center justify-center text-sm font-bold text-slate-600 uppercase cursor-pointer" onClick={() => navigate('/settings')}>
               {user?.profilePhoto ? (
                 <img src={user.profilePhoto} alt={user.name} className="w-full h-full object-cover" />
@@ -122,6 +123,7 @@ export default function MainLayout() {
 
       {/* LangChain Support Widget */}
       <SupportChatWidget />
+      <SosWidget />
     </div>
   );
 }

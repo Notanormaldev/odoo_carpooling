@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import useAuthStore from '../store/authStore';
@@ -10,10 +10,15 @@ export default function LoginView() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
     clearError();
-  }, []);
+    const queryError = searchParams.get('error');
+    if (queryError) {
+      toast.error(queryError);
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -103,14 +108,14 @@ export default function LoginView() {
                 onClick={() => handleQuickLogin('rajpatel@gmail.com', 'Password123!')}
                 className="flex-1 py-2 px-3 bg-slate-50 border border-slate-200 hover:border-[#e85d4a]/50 hover:bg-[#e85d4a]/5 text-slate-700 hover:text-[#e85d4a] rounded-lg text-xs font-bold transition-all cursor-pointer text-center"
               >
-                👑 Admin (Raj)
+                Admin
               </button>
               <button
                 type="button"
                 onClick={() => handleQuickLogin('sujalpanchal25072005@gmail.com', 'Password123!')}
                 className="flex-1 py-2 px-3 bg-slate-50 border border-slate-200 hover:border-[#e85d4a]/50 hover:bg-[#e85d4a]/5 text-slate-700 hover:text-[#e85d4a] rounded-lg text-xs font-bold transition-all cursor-pointer text-center"
               >
-                🚗 Employee (Sujal)
+                Employee
               </button>
             </div>
           </div>

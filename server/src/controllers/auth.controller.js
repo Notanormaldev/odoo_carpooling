@@ -74,15 +74,20 @@ export const logout = asyncHandler(async (req, res) => {
 
 export const googleCallback = asyncHandler(async (req, res) => {
   const profile = req.user;
-  if (!profile) throw ApiError.unauthorized('Google authentication failed');
+  if (!profile) {
+    return res.redirect(`${process.env.CLIENT_URL}/login?error=${encodeURIComponent('Google authentication failed')}`);
+  }
 
-  const result = await authService.handleGoogleUser(profile);
-  res.cookie('refreshToken', result.refreshToken, COOKIE_OPTIONS);
-
-  // Redirect to frontend with access token
-  res.redirect(
-    `${process.env.CLIENT_URL}/auth/google/success?token=${result.accessToken}`
-  );
+  try {
+    const result = await authService.handleGoogleUser(profile);
+    res.cookie('refreshToken', result.refreshToken, COOKIE_OPTIONS);
+    return res.redirect(
+      `${process.env.CLIENT_URL}/auth/google/success?token=${result.accessToken}`
+    );
+  } catch (error) {
+    const errMsg = error.message || 'Google authentication failed';
+    return res.redirect(`${process.env.CLIENT_URL}/login?error=${encodeURIComponent(errMsg)}`);
+  }
 });
 
 export const getMe = asyncHandler(async (req, res) => {

@@ -8,10 +8,44 @@ import api from '../api/axios';
 
 maptilersdk.config.apiKey = import.meta.env.VITE_MAPTILER_API_KEY || 'RL13CDEQU2gZu8sIcdc0';
 
+const CITIES = [
+  { label: 'AHM (AHMEDABAD)', name: 'ahmedabad', lat: 23.0225, lng: 72.5714 },
+  { label: 'GND (GANDHINAGAR)', name: 'gandhinagar', lat: 23.2156, lng: 72.6369 },
+  { label: 'SUR (SURAT)', name: 'surat', lat: 21.1702, lng: 72.8311 },
+  { label: 'BRD (VADODARA)', name: 'vadodara', lat: 22.3072, lng: 73.1812 },
+  { label: 'RAJ (RAJKOT)', name: 'rajkot', lat: 22.3039, lng: 70.8022 },
+  { label: 'BHN (BHAVNAGAR)', name: 'bhavnagar', lat: 21.7645, lng: 72.1519 },
+  { label: 'JAM (JAMNAGAR)', name: 'jamnagar', lat: 22.4707, lng: 70.0577 },
+  { label: 'JUN (JUNAGADH)', name: 'junagadh', lat: 21.5222, lng: 70.4579 },
+  { label: 'ANND (ANAND)', name: 'anand', lat: 22.5645, lng: 72.9289 },
+  { label: 'NVS (NAVSARI)', name: 'navsari', lat: 20.9467, lng: 72.9520 },
+  { label: 'VAL (VALSAD)', name: 'valsad', lat: 20.5992, lng: 72.9342 },
+  { label: 'BHJ (BHUJ)', name: 'bhuj', lat: 23.2420, lng: 69.6669 },
+  { label: 'MSN (MEHSANA)', name: 'mehsana', lat: 23.5880, lng: 72.3693 },
+  { label: 'MOR (MORBI)', name: 'morbi', lat: 22.8120, lng: 70.8236 },
+  { label: 'PPA (PATAN)', name: 'patan', lat: 23.8493, lng: 72.1266 },
+  { label: 'POR (PORBANDAR)', name: 'porbandar', lat: 21.6417, lng: 69.6093 },
+  { label: 'GHD (GODHRA)', name: 'godhra', lat: 22.7753, lng: 73.6146 },
+  { label: 'PAL (PALANPUR)', name: 'palanpur', lat: 24.1722, lng: 72.4333 },
+  { label: 'AMR (AMRELI)', name: 'amreli', lat: 21.6012, lng: 71.2204 },
+  { label: 'VAP (VAPI)', name: 'vapi', lat: 20.3718, lng: 72.9090 },
+  { label: 'BHRL (BHARUCH)', name: 'bharuch', lat: 21.7051, lng: 72.9959 }
+];
+
 const geocodeAddress = (address, isDestination = false) => {
   if (!address) return isDestination ? { lat: 23.1974, lng: 72.6326 } : { lat: 23.0225, lng: 72.5714 };
   const clean = address.toLowerCase().trim();
   
+  // Try predefined cities match
+  const matched = CITIES.find(c => 
+    clean.includes(c.name) || 
+    clean.includes(c.label.toLowerCase()) || 
+    (c.label.split(' ')[0] && clean === c.label.split(' ')[0].toLowerCase())
+  );
+  if (matched) {
+    return { lat: matched.lat, lng: matched.lng };
+  }
+
   if (clean.includes('infocity')) {
     return { lat: 23.1974, lng: 72.6326 };
   }
@@ -65,6 +99,62 @@ export default function DashboardView() {
   const [showConfirmRoute, setShowConfirmRoute] = useState(false);
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
+  const [pickupSuggestions, setPickupSuggestions] = useState([]);
+  const [showPickupSuggestions, setShowPickupSuggestions] = useState(false);
+  const [destSuggestions, setDestSuggestions] = useState([]);
+  const [showDestSuggestions, setShowDestSuggestions] = useState(false);
+
+  const handlePickupChange = (val) => {
+    setPickup(val);
+    if (!val.trim()) {
+      setPickupSuggestions(CITIES.slice(0, 5));
+    } else {
+      const filtered = CITIES.filter(c => 
+        c.label.toLowerCase().includes(val.toLowerCase()) || 
+        c.name.toLowerCase().includes(val.toLowerCase())
+      );
+      setPickupSuggestions(filtered);
+    }
+  };
+
+  const handleDestChange = (val) => {
+    setDestination(val);
+    if (!val.trim()) {
+      setDestSuggestions(CITIES.slice(0, 5));
+    } else {
+      const filtered = CITIES.filter(c => 
+        c.label.toLowerCase().includes(val.toLowerCase()) || 
+        c.name.toLowerCase().includes(val.toLowerCase())
+      );
+      setDestSuggestions(filtered);
+    }
+  };
+
+  const handlePickupFocus = () => {
+    if (!pickup.trim()) {
+      setPickupSuggestions(CITIES.slice(0, 5));
+    } else {
+      const filtered = CITIES.filter(c => 
+        c.label.toLowerCase().includes(pickup.toLowerCase()) || 
+        c.name.toLowerCase().includes(pickup.toLowerCase())
+      );
+      setPickupSuggestions(filtered);
+    }
+    setShowPickupSuggestions(true);
+  };
+
+  const handleDestFocus = () => {
+    if (!destination.trim()) {
+      setDestSuggestions(CITIES.slice(0, 5));
+    } else {
+      const filtered = CITIES.filter(c => 
+        c.label.toLowerCase().includes(destination.toLowerCase()) || 
+        c.name.toLowerCase().includes(destination.toLowerCase())
+      );
+      setDestSuggestions(filtered);
+    }
+    setShowDestSuggestions(true);
+  };
 
   const [dlNumber, setDlNumber] = useState('');
   const [dlSubmitting, setDlSubmitting] = useState(false);
@@ -270,26 +360,66 @@ export default function DashboardView() {
             <form onSubmit={handleSearch} className="space-y-4">
               <div>
                 <label className="block text-xs text-slate-400 mb-2 font-medium">Start Location</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Pickup point"
-                  value={pickup}
-                  onChange={(e) => setPickup(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-2.5 text-sm focus:outline-none focus:border-[#e85d4a]"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    placeholder="Pickup point"
+                    value={pickup}
+                    onChange={(e) => handlePickupChange(e.target.value)}
+                    onFocus={handlePickupFocus}
+                    onBlur={() => setShowPickupSuggestions(false)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-2.5 text-sm focus:outline-none focus:border-[#e85d4a]"
+                  />
+                  {showPickupSuggestions && pickupSuggestions.length > 0 && (
+                    <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto divide-y divide-slate-100">
+                      {pickupSuggestions.map((c) => (
+                        <div
+                          key={`find-pickup-${c.name}`}
+                          onMouseDown={() => {
+                            setPickup(c.label);
+                            setShowPickupSuggestions(false);
+                          }}
+                          className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#e85d4a] cursor-pointer transition-colors"
+                        >
+                          {c.label}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div>
                 <label className="block text-xs text-slate-400 mb-2 font-medium">Drop/Destination Location</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Drop point"
-                  value={destination}
-                  onChange={(e) => setDestination(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-2.5 text-sm focus:outline-none focus:border-[#e85d4a]"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    placeholder="Drop point"
+                    value={destination}
+                    onChange={(e) => handleDestChange(e.target.value)}
+                    onFocus={handleDestFocus}
+                    onBlur={() => setShowDestSuggestions(false)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-2.5 text-sm focus:outline-none focus:border-[#e85d4a]"
+                  />
+                  {showDestSuggestions && destSuggestions.length > 0 && (
+                    <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto divide-y divide-slate-100">
+                      {destSuggestions.map((c) => (
+                        <div
+                          key={`find-dest-${c.name}`}
+                          onMouseDown={() => {
+                            setDestination(c.label);
+                            setShowDestSuggestions(false);
+                          }}
+                          className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#e85d4a] cursor-pointer transition-colors"
+                        >
+                          {c.label}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -457,26 +587,66 @@ export default function DashboardView() {
 
               <div>
                 <label className="block text-xs text-slate-400 mb-2 font-medium">Pickup Point</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Start Location"
-                  value={pickup}
-                  onChange={(e) => setPickup(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-3 text-sm focus:outline-none focus:border-[#e85d4a]"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    placeholder="Start Location"
+                    value={pickup}
+                    onChange={(e) => handlePickupChange(e.target.value)}
+                    onFocus={handlePickupFocus}
+                    onBlur={() => setShowPickupSuggestions(false)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-3 text-sm focus:outline-none focus:border-[#e85d4a]"
+                  />
+                  {showPickupSuggestions && pickupSuggestions.length > 0 && (
+                    <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto divide-y divide-slate-100">
+                      {pickupSuggestions.map((c) => (
+                        <div
+                          key={`pub-pickup-${c.name}`}
+                          onMouseDown={() => {
+                            setPickup(c.label);
+                            setShowPickupSuggestions(false);
+                          }}
+                          className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#e85d4a] cursor-pointer transition-colors"
+                        >
+                          {c.label}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div>
                 <label className="block text-xs text-slate-400 mb-2 font-medium">Destination Point</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Drop point"
-                  value={destination}
-                  onChange={(e) => setDestination(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-3 text-sm focus:outline-none focus:border-[#e85d4a]"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    placeholder="Drop point"
+                    value={destination}
+                    onChange={(e) => handleDestChange(e.target.value)}
+                    onFocus={handleDestFocus}
+                    onBlur={() => setShowDestSuggestions(false)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-3 text-sm focus:outline-none focus:border-[#e85d4a]"
+                  />
+                  {showDestSuggestions && destSuggestions.length > 0 && (
+                    <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto divide-y divide-slate-100">
+                      {destSuggestions.map((c) => (
+                        <div
+                          key={`pub-dest-${c.name}`}
+                          onMouseDown={() => {
+                            setDestination(c.label);
+                            setShowDestSuggestions(false);
+                          }}
+                          className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#e85d4a] cursor-pointer transition-colors"
+                        >
+                          {c.label}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">

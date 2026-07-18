@@ -50,7 +50,7 @@ const seedDatabase = async () => {
     // 10 Employee users
     const raj = await User.create({
       name: 'Raj Patel',
-      email: 'sujalpanchal25072005@gmail.com',
+      email: 'rajpatel@gmail.com',
       password: 'Password123!',
       mobile: '9876543210',
       orgId: org._id,
@@ -60,6 +60,25 @@ const seedDatabase = async () => {
       officeLocation: 'Tower A, Floor 5',
       profilePhoto: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
       drivingLicense: 'DL-IND-9992388',
+      drivingLicenseStatus: 'approved',
+      walletBalance: 2500,
+      trustScore: 4.8,
+      isEmailVerified: true,
+      platformAccess: true,
+    });
+
+    const sujal = await User.create({
+      name: 'Sujal Patel',
+      email: 'sujalpanchal25072005@gmail.com',
+      password: 'Password123!',
+      mobile: '9898989000',
+      orgId: org._id,
+      role: 'admin',
+      department: 'Engineering',
+      manager: 'Siddharth Shah',
+      officeLocation: 'Tower E',
+      profilePhoto: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
+      drivingLicense: 'DL-IND-9992389',
       drivingLicenseStatus: 'approved',
       walletBalance: 2500,
       trustScore: 4.8,
@@ -203,6 +222,19 @@ const seedDatabase = async () => {
       seatingCapacity: 4,
       fuelType: 'petrol',
       fuelEfficiency: 18,
+      status: 'active',
+      approvedAt: new Date(),
+      approvedBy: admin._id,
+    });
+
+    const sujalVehicle = await Vehicle.create({
+      ownerId: sujal._id,
+      orgId: org._id,
+      model: 'Honda City',
+      registrationNumber: 'GJ01AB9999',
+      seatingCapacity: 4,
+      fuelType: 'petrol',
+      fuelEfficiency: 16,
       status: 'active',
       approvedAt: new Date(),
       approvedBy: admin._id,

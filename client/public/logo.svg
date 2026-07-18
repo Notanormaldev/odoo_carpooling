@@ -1,10 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
-  <!-- Left/Pickup Route Loop -->
-  <path d="M30 50 C30 35, 45 25, 55 35 C65 45, 45 65, 30 50 Z" stroke="#e85d4a" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" />
+  <!-- Gradient definitions for premium glass-like look -->
+  <defs>
+    <linearGradient id="coralGrad" x1="10" y1="10" x2="90" y2="90">
+      <stop offset="0%" stop-color="#e85d4a" />
+      <stop offset="100%" stop-color="#f39c12" />
+    </linearGradient>
+    <linearGradient id="blueGrad" x1="90" y1="10" x2="10" y2="90">
+      <stop offset="0%" stop-color="#2563eb" />
+      <stop offset="100%" stop-color="#38bdf8" />
+    </linearGradient>
+  </defs>
+
+  <!-- Abstract Intersecting Route Paths (Monogram style, zero background) -->
+  <path d="M25 50 C25 30, 45 20, 50 35 C55 50, 45 70, 25 50 Z" fill="url(#coralGrad)" opacity="0.9" />
+  <path d="M75 50 C75 70, 55 80, 50 65 C45 50, 55 30, 75 50 Z" fill="url(#blueGrad)" opacity="0.9" />
   
-  <!-- Right/Destination Route Loop -->
-  <path d="M70 50 C70 65, 55 75, 45 65 C35 55, 55 35, 70 50 Z" stroke="#2563eb" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" opacity="0.85" />
-  
-  <!-- Shared Intersection Accent -->
-  <circle cx="50" cy="50" r="6" fill="#e85d4a" />
+  <!-- Intersection Accent Loop -->
+  <circle cx="50" cy="50" r="10" stroke="#ffffff" stroke-width="4" fill="#e85d4a" />
 </svg>

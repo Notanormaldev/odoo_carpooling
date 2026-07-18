@@ -122,7 +122,7 @@ const seedDatabase = async () => {
       platformAccess: true,
     });
 
-    // Rajkot employee — driver
+    // Rajkot employee — driver (with pending license for verification testing)
     const arjun = await User.create({
       name: 'Arjun Mehta',
       email: 'arjun.mehta@co.com',
@@ -134,8 +134,16 @@ const seedDatabase = async () => {
       manager: 'Nisha Vyas',
       officeLocation: 'Rajkot Office',
       profilePhoto: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-      drivingLicense: 'DL-GJ-RAJ-001',
-      drivingLicenseStatus: 'approved',
+      drivingLicense: 'DL-03201800999',
+      drivingLicenseStatus: 'pending',
+      drivingLicensePhoto: 'https://images.unsplash.com/photo-1554415707-6e8cfc93fe23?w=800',
+      drivingLicenseAiStatus: 'verified',
+      drivingLicenseAiDetails: {
+        name: 'ARJUN MEHTA',
+        licenseNumber: 'DL-03201800999',
+        dob: '14/11/1993',
+        validity: '09/07/2030'
+      },
       walletBalance: 1200,
       trustScore: 4.6,
       isEmailVerified: true,
@@ -258,6 +266,34 @@ const seedDatabase = async () => {
       platformAccess: true,
     });
 
+    // Delhi/Gandhinagar employee — Lipika Saikia Rao (with pending Delhi DL)
+    const lipika = await User.create({
+      name: 'Lipika Saikia Rao',
+      email: 'lipika.rao@co.com',
+      password: 'Password123!',
+      mobile: '9123456789',
+      orgId: org._id,
+      role: 'employee',
+      department: 'HR',
+      manager: 'Anjali Sharma',
+      officeLocation: 'Gandhinagar HQ',
+      profilePhoto: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150',
+      drivingLicense: 'DL-11201603560',
+      drivingLicenseStatus: 'pending',
+      drivingLicensePhoto: '/seeds/delhi-dl.png',
+      drivingLicenseAiStatus: 'verified',
+      drivingLicenseAiDetails: {
+        name: 'LIPIKA SAIKIA RAO',
+        licenseNumber: 'DL-11201603560',
+        dob: '25/06/1981',
+        validity: '09/07/2028'
+      },
+      walletBalance: 1500,
+      trustScore: 5.0,
+      isEmailVerified: true,
+      platformAccess: true,
+    });
+
     console.log('🚗 Registering Vehicles...');
 
     const rajVehicle = await Vehicle.create({
@@ -316,7 +352,7 @@ const seedDatabase = async () => {
       status: 'active', approvedAt: new Date(), approvedBy: raj._id,
     });
 
-    await Organization.findByIdAndUpdate(org._id, { totalRegisteredEmployees: 11 });
+    await Organization.findByIdAndUpdate(org._id, { totalRegisteredEmployees: 12 });
 
     console.log('📅 Seeding Rides across Gujarat...');
 
@@ -442,13 +478,123 @@ const seedDatabase = async () => {
       dateTime: mkDate(7, 8, 30), totalSeats: 4, availableSeats: 4, farePerSeat: 140, status: 'published',
     });
 
-    // Ahmedabad → Gandhinagar (Sujal) — for Jul 31 test
-    const jul31 = await Ride.create({
+    // ===== SPECIAL TEST DATES: JULY 30, JULY 31, AUGUST 1 RIDES =====
+    
+    // Ahmedabad ➔ Gandhinagar on July 31 (Sujal)
+    await Ride.create({
       driverId: sujal._id, vehicleId: sujalVehicle._id, orgId: org._id,
       startLocation: { address: 'Ahmedabad (Naroda)', lat: 23.0689, lng: 72.6531 },
       destination: { address: 'Gandhinagar (Sector 11)', lat: 23.2156, lng: 72.6369 },
       dateTime: new Date('2026-07-31T03:30:00.000Z'),
       totalSeats: 4, availableSeats: 4, farePerSeat: 120, status: 'published',
+    });
+
+    // Ahmedabad ➔ Gandhinagar on July 30 (Raj)
+    await Ride.create({
+      driverId: raj._id, vehicleId: rajVehicle._id, orgId: org._id,
+      startLocation: { address: 'Ahmedabad (Naroda)', lat: 23.0689, lng: 72.6531 },
+      destination: { address: 'Gandhinagar (Sector 11)', lat: 23.2156, lng: 72.6369 },
+      dateTime: new Date('2026-07-30T09:00:00.000Z'),
+      totalSeats: 4, availableSeats: 4, farePerSeat: 130, status: 'published',
+    });
+
+    // Ahmedabad ➔ Gandhinagar on August 1 (Rahul)
+    await Ride.create({
+      driverId: rahul._id, vehicleId: rahulVehicle._id, orgId: org._id,
+      startLocation: { address: 'Ahmedabad (Naroda)', lat: 23.0689, lng: 72.6531 },
+      destination: { address: 'Gandhinagar (Sector 11)', lat: 23.2156, lng: 72.6369 },
+      dateTime: new Date('2026-08-01T08:30:00.000Z'),
+      totalSeats: 4, availableSeats: 4, farePerSeat: 110, status: 'published',
+    });
+
+    // Surat ➔ Vadodara on July 30 (Nirav)
+    await Ride.create({
+      driverId: nirav._id, vehicleId: niravVehicle._id, orgId: org._id,
+      startLocation: { address: 'Surat (Athwa Gate)', lat: 21.1939, lng: 72.8319 },
+      destination: { address: 'Vadodara (Alkapuri)', lat: 22.3178, lng: 73.1780 },
+      dateTime: new Date('2026-07-30T07:00:00.000Z'),
+      totalSeats: 4, availableSeats: 4, farePerSeat: 240, status: 'published',
+    });
+
+    // Surat ➔ Vadodara on July 31 (Amit)
+    await Ride.create({
+      driverId: amit._id, vehicleId: amitVehicle._id, orgId: org._id,
+      startLocation: { address: 'Surat (Athwa Gate)', lat: 21.1939, lng: 72.8319 },
+      destination: { address: 'Vadodara (Alkapuri)', lat: 22.3178, lng: 73.1780 },
+      dateTime: new Date('2026-07-31T08:00:00.000Z'),
+      totalSeats: 4, availableSeats: 4, farePerSeat: 260, status: 'published',
+    });
+
+    // Rajkot ➔ Ahmedabad on July 30 (Arjun)
+    await Ride.create({
+      driverId: arjun._id, vehicleId: arjunVehicle._id, orgId: org._id,
+      startLocation: { address: 'Rajkot (Kalawad Road)', lat: 22.3070, lng: 70.7769 },
+      destination: { address: 'Ahmedabad (Sarkhej)', lat: 23.0060, lng: 72.5100 },
+      dateTime: new Date('2026-07-30T06:30:00.000Z'),
+      totalSeats: 4, availableSeats: 4, farePerSeat: 340, status: 'published',
+    });
+
+    // Rajkot ➔ Ahmedabad on July 31 (Arjun)
+    await Ride.create({
+      driverId: arjun._id, vehicleId: arjunVehicle._id, orgId: org._id,
+      startLocation: { address: 'Rajkot (Kalawad Road)', lat: 22.3070, lng: 70.7769 },
+      destination: { address: 'Ahmedabad (Sarkhej)', lat: 23.0060, lng: 72.5100 },
+      dateTime: new Date('2026-07-31T07:30:00.000Z'),
+      totalSeats: 4, availableSeats: 4, farePerSeat: 360, status: 'published',
+    });
+
+    // Bhavnagar ➔ Ahmedabad on July 30 (Kavita)
+    await Ride.create({
+      driverId: kavita._id, vehicleId: kavitaVehicle._id, orgId: org._id,
+      startLocation: { address: 'Bhavnagar (Crescent Circle)', lat: 21.7671, lng: 72.1516 },
+      destination: { address: 'Ahmedabad (Paldi)', lat: 23.0156, lng: 72.5698 },
+      dateTime: new Date('2026-07-30T07:00:00.000Z'),
+      totalSeats: 3, availableSeats: 3, farePerSeat: 290, status: 'published',
+    });
+
+    // Bhavnagar ➔ Ahmedabad on July 31 (Kavita)
+    await Ride.create({
+      driverId: kavita._id, vehicleId: kavitaVehicle._id, orgId: org._id,
+      startLocation: { address: 'Bhavnagar (Crescent Circle)', lat: 21.7671, lng: 72.1516 },
+      destination: { address: 'Ahmedabad (Paldi)', lat: 23.0156, lng: 72.5698 },
+      dateTime: new Date('2026-07-31T09:00:00.000Z'),
+      totalSeats: 3, availableSeats: 3, farePerSeat: 310, status: 'published',
+    });
+
+    // Anand ➔ Ahmedabad on July 30 (Rohan)
+    await Ride.create({
+      driverId: rohan._id, vehicleId: rohanVehicle._id, orgId: org._id,
+      startLocation: { address: 'Anand (Vallabh Vidyanagar)', lat: 22.5409, lng: 72.9222 },
+      destination: { address: 'Ahmedabad (Navrangpura)', lat: 23.0341, lng: 72.5630 },
+      dateTime: new Date('2026-07-30T08:00:00.000Z'),
+      totalSeats: 3, availableSeats: 3, farePerSeat: 130, status: 'published',
+    });
+
+    // Anand ➔ Ahmedabad on July 31 (Rohan)
+    await Ride.create({
+      driverId: rohan._id, vehicleId: rohanVehicle._id, orgId: org._id,
+      startLocation: { address: 'Anand (Vallabh Vidyanagar)', lat: 22.5409, lng: 72.9222 },
+      destination: { address: 'Ahmedabad (Navrangpura)', lat: 23.0341, lng: 72.5630 },
+      dateTime: new Date('2026-07-31T17:30:00.000Z'),
+      totalSeats: 3, availableSeats: 3, farePerSeat: 150, status: 'published',
+    });
+
+    // Mehsana ➔ Gandhinagar on July 30 (Rahul)
+    await Ride.create({
+      driverId: rahul._id, vehicleId: rahulVehicle._id, orgId: org._id,
+      startLocation: { address: 'Mehsana (Bus Stand)', lat: 23.5880, lng: 72.3693 },
+      destination: { address: 'Gandhinagar (Sector 7)', lat: 23.2156, lng: 72.6369 },
+      dateTime: new Date('2026-07-30T07:30:00.000Z'),
+      totalSeats: 4, availableSeats: 4, farePerSeat: 150, status: 'published',
+    });
+
+    // Mehsana ➔ Gandhinagar on July 31 (Rahul)
+    await Ride.create({
+      driverId: rahul._id, vehicleId: rahulVehicle._id, orgId: org._id,
+      startLocation: { address: 'Mehsana (Bus Stand)', lat: 23.5880, lng: 72.3693 },
+      destination: { address: 'Gandhinagar (Sector 7)', lat: 23.2156, lng: 72.6369 },
+      dateTime: new Date('2026-07-31T08:30:00.000Z'),
+      totalSeats: 4, availableSeats: 4, farePerSeat: 170, status: 'published',
     });
 
     // Rajkot → Jamnagar (Arjun)

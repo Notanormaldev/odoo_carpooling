@@ -53,6 +53,7 @@ export default function WalletView() {
         prefill: {
           name: user?.name || '',
           email: user?.email || '',
+          contact: user?.mobile || '',
         },
         theme: {
           color: '#e85d4a',

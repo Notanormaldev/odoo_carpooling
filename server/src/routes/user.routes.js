@@ -9,7 +9,15 @@ const router = express.Router();
 
 router.use(protect);
 
-router.patch('/profile', upload.single('profilePhoto'), validate(updateProfileSchema), userController.updateProfile);
+router.patch(
+  '/profile',
+  upload.fields([
+    { name: 'profilePhoto', maxCount: 1 },
+    { name: 'drivingLicensePhoto', maxCount: 1 },
+  ]),
+  validate(updateProfileSchema),
+  userController.updateProfile
+);
 
 // Saved Places
 router.post('/saved-places', validate(addSavedPlaceSchema), userController.addSavedPlace);

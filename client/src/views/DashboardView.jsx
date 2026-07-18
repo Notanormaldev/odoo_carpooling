@@ -803,23 +803,26 @@ export default function DashboardView() {
             </form>
 
             <div className="mt-4 pt-4 border-t border-slate-100 space-y-2">
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Recommended Commutes</span>
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Popular Routes</span>
               <div className="flex flex-wrap gap-2">
                 {[
-                  { from: 'Ahmedabad (ISKCON Circle)', to: 'Gandhinagar (Infocity)', label: 'Ahmedabad ➔ Gandhinagar' },
-                  { from: 'Ahmedabad (C G Road)', to: 'Gandhinagar (Sector 21)', label: 'CG Road ➔ Sector 21' },
-                  { from: 'GIFT City, Gandhinagar', to: 'Sargasan, Gandhinagar', label: 'GIFT City ➔ Sargasan' }
+                  { fromLabel: 'AHM (AHMEDABAD)', toLabel: 'GND (GANDHINAGAR)', fromCoords: { lat: 23.0689, lng: 72.6531 }, toCoords: { lat: 23.2156, lng: 72.6369 }, label: 'Ahmedabad ➔ Gandhinagar' },
+                  { fromLabel: 'SUR (SURAT)', toLabel: 'BRD (VADODARA)', fromCoords: { lat: 21.1939, lng: 72.8319 }, toCoords: { lat: 22.3178, lng: 73.1780 }, label: 'Surat ➔ Vadodara' },
+                  { fromLabel: 'RAJ (RAJKOT)', toLabel: 'AHM (AHMEDABAD)', fromCoords: { lat: 22.3070, lng: 70.7769 }, toCoords: { lat: 23.0060, lng: 72.5100 }, label: 'Rajkot ➔ Ahmedabad' },
+                  { fromLabel: 'BHN (BHAVNAGAR)', toLabel: 'AHM (AHMEDABAD)', fromCoords: { lat: 21.7671, lng: 72.1516 }, toCoords: { lat: 23.0156, lng: 72.5698 }, label: 'Bhavnagar ➔ Ahmedabad' },
+                  { fromLabel: 'ANND (ANAND)', toLabel: 'AHM (AHMEDABAD)', fromCoords: { lat: 22.5409, lng: 72.9222 }, toCoords: { lat: 23.0341, lng: 72.5630 }, label: 'Anand ➔ Ahmedabad' },
+                  { fromLabel: 'MSN (MEHSANA)', toLabel: 'GND (GANDHINAGAR)', fromCoords: { lat: 23.5880, lng: 72.3693 }, toCoords: { lat: 23.2156, lng: 72.6369 }, label: 'Mehsana ➔ Gandhinagar' },
                 ].map((route, idx) => (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => {
-                      setPickup(route.from);
-                      setDestination(route.to);
-                      setDate('2026-07-31');
-                      toast.success('Commute endpoints pre-filled! 🚗');
+                      setPickup(route.fromLabel);
+                      setDestination(route.toLabel);
+                      setPickupCoords(route.fromCoords);
+                      setDestCoords(route.toCoords);
                     }}
-                    className="text-[10px] bg-slate-100 hover:bg-[#e85d4a]/10 hover:text-[#e85d4a] text-slate-600 font-bold px-2 py-1.5 rounded transition-all cursor-pointer"
+                    className="text-[10px] bg-slate-100 hover:bg-[#e85d4a]/10 hover:text-[#e85d4a] text-slate-600 font-bold px-2 py-1.5 rounded transition-all cursor-pointer font-sans"
                   >
                     {route.label}
                   </button>

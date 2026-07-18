@@ -113,6 +113,7 @@ rideSchema.statics.findNearbyRides = function (orgId, lat, lng, radiusKm = 5) {
     {
       $geoNear: {
         near: { type: 'Point', coordinates: [lng, lat] },
+        key: 'startPoint',
         distanceField: 'startDistance',
         maxDistance: radiusKm * 1000,
         spherical: true,

@@ -5,7 +5,7 @@ import * as userService from '../services/user.service.js';
 import User from '../models/User.model.js';
 
 export const updateProfile = asyncHandler(async (req, res) => {
-  const user = await userService.updateProfile(req.user._id, req.body, req.file);
+  const user = await userService.updateProfile(req.user._id, req.body, req.files);
   return res.status(200).json(new ApiResponse(200, user, 'Profile updated successfully'));
 });
 
@@ -38,7 +38,7 @@ export const getPendingLicenses = asyncHandler(async (req, res) => {
   if (req.user.role !== 'admin') {
     throw ApiError.forbidden('Only admins can view pending licenses');
   }
-  const users = await User.find({ drivingLicenseStatus: 'pending' }).select('name email drivingLicense drivingLicenseStatus');
+  const users = await User.find({ drivingLicenseStatus: 'pending' }).select('name email drivingLicense drivingLicenseStatus drivingLicensePhoto drivingLicenseAiStatus drivingLicenseAiDetails');
   return res.status(200).json(new ApiResponse(200, users, 'Pending licenses fetched'));
 });
 

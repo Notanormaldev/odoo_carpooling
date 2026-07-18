@@ -64,7 +64,6 @@ export default function SettingsView() {
           <SettingsLink label="My Vehicle" icon={Car} onClick={() => navigate('/vehicle')} />
           <SettingsLink label="Payment Method" icon={Wallet} onClick={() => navigate('/wallet')} />
           <SettingsLink label="Ride History" icon={BarChart3} onClick={() => navigate('/history')} />
-          <SettingsLink label="Saved Places" icon={MapPin} onClick={() => toast('Feature coming soon! 🚧')} />
           {user?.role === 'admin' && (
             <SettingsLink label="Driver Approvals" icon={Shield} onClick={() => setSubView('approvals')} isHighlight={subView === 'approvals'} />
           )}

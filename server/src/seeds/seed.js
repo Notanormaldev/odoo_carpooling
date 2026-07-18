@@ -27,7 +27,7 @@ const seedDatabase = async () => {
       name: 'Odoo Pvt Ltd',
       registeredAddress: 'Odoo House, Infocity, Gandhinagar, Gujarat 382007',
       industry: 'Software Services',
-      adminContact: 'admin@co.com',
+      adminContact: 'rajpatel@gmail.com',
       allowedEmailDomain: 'co.com',
       logo: '/logo.png',
       fuelCostPerLitre: 96.5,
@@ -36,17 +36,6 @@ const seedDatabase = async () => {
     });
 
     console.log('👥 Creating Users (Admin, Drivers & Employees)...');
-    // Admin user
-    const admin = await User.create({
-      name: 'Odoo Admin',
-      email: 'admin@co.com',
-      password: 'Password123!',
-      orgId: org._id,
-      role: 'admin',
-      isEmailVerified: true,
-      platformAccess: true,
-    });
-
     // 10 Employee users
     const raj = await User.create({
       name: 'Raj Patel',
@@ -73,7 +62,7 @@ const seedDatabase = async () => {
       password: 'Password123!',
       mobile: '9898989000',
       orgId: org._id,
-      role: 'admin',
+      role: 'employee',
       department: 'Engineering',
       manager: 'Siddharth Shah',
       officeLocation: 'Tower E',
@@ -224,7 +213,7 @@ const seedDatabase = async () => {
       fuelEfficiency: 18,
       status: 'active',
       approvedAt: new Date(),
-      approvedBy: admin._id,
+      approvedBy: raj._id,
     });
 
     const sujalVehicle = await Vehicle.create({
@@ -237,7 +226,7 @@ const seedDatabase = async () => {
       fuelEfficiency: 16,
       status: 'active',
       approvedAt: new Date(),
-      approvedBy: admin._id,
+      approvedBy: raj._id,
     });
 
     const krishnaVehicle = await Vehicle.create({
@@ -250,7 +239,7 @@ const seedDatabase = async () => {
       fuelEfficiency: 22,
       status: 'active',
       approvedAt: new Date(),
-      approvedBy: admin._id,
+      approvedBy: raj._id,
     });
 
     const amitVehicle = await Vehicle.create({
@@ -263,7 +252,7 @@ const seedDatabase = async () => {
       fuelEfficiency: 20,
       status: 'active',
       approvedAt: new Date(),
-      approvedBy: admin._id,
+      approvedBy: raj._id,
     });
 
     const rohanVehicle = await Vehicle.create({
@@ -276,7 +265,7 @@ const seedDatabase = async () => {
       fuelEfficiency: 15,
       status: 'active',
       approvedAt: new Date(),
-      approvedBy: admin._id,
+      approvedBy: raj._id,
     });
 
     const rahulVehicle = await Vehicle.create({
@@ -289,7 +278,7 @@ const seedDatabase = async () => {
       fuelEfficiency: 16,
       status: 'active',
       approvedAt: new Date(),
-      approvedBy: admin._id,
+      approvedBy: raj._id,
     });
 
     // Update org employee count

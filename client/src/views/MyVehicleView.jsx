@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Loader, Car } from 'lucide-react';
+import { ChevronLeft, Loader, Car, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../api/axios';
 
@@ -11,6 +11,7 @@ export default function MyVehicleView() {
   const [capacity, setCapacity] = useState(4);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [deleteId, setDeleteId] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -43,6 +44,17 @@ export default function MyVehicleView() {
       fetchVehicles();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Registration failed');
+    }
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      await api.delete(`/vehicles/${id}`);
+      toast.success('Vehicle deleted successfully.');
+      setDeleteId(null);
+      fetchVehicles();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete vehicle');
     }
   };
 
@@ -134,9 +146,13 @@ export default function MyVehicleView() {
                     <span className={`text-[10px] uppercase px-2 py-0.5 rounded font-bold ${
                       v.status === 'active' ? 'bg-emerald-50 text-accent-emerald' : 'bg-amber-50 text-accent-amber'
                     }`}>{v.status}</span>
-                    <div className="text-right">
-                      <p className="text-xs font-bold text-slate-800">Driver</p>
-                    </div>
+                    <button
+                      onClick={() => setDeleteId(v._id)}
+                      className="p-1.5 text-slate-400 hover:text-rose-500 rounded hover:bg-rose-50 transition-colors cursor-pointer"
+                      title="Delete Vehicle"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               ))
@@ -144,6 +160,37 @@ export default function MyVehicleView() {
           </div>
         )}
       </div>
+
+      {/* Premium Deletion Confirmation Modal */}
+      {deleteId && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 animate-fade-in">
+          <div className="bg-white border border-slate-100 rounded-xl p-6 max-w-sm w-full mx-4 shadow-xl space-y-4 transform scale-100 transition-all">
+            <div className="w-12 h-12 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-2">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <div className="text-center">
+              <h4 className="font-bold text-slate-800 text-base">Delete Vehicle?</h4>
+              <p className="text-xs text-slate-400 mt-1">
+                Are you sure you want to delete this vehicle? This action cannot be undone.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteId(null)}
+                className="flex-1 border border-slate-200 text-slate-500 hover:bg-slate-50 font-semibold py-2 rounded text-xs transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDelete(deleteId)}
+                className="flex-1 bg-rose-500 hover:bg-rose-600 text-white font-semibold py-2 rounded text-xs transition-colors shadow-sm cursor-pointer"
+              >
+                Confirm Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

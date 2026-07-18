@@ -2,6 +2,7 @@ import { verifyToken } from '../utils/tokenHelper.js';
 import ApiError from '../utils/ApiError.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import User from '../models/User.model.js';
+import { getRedisClient } from '../config/redis.js';
 
 export const protect = asyncHandler(async (req, res, next) => {
   let token;
@@ -17,6 +18,13 @@ export const protect = asyncHandler(async (req, res, next) => {
 
   if (!token) {
     throw ApiError.unauthorized('Access token required');
+  }
+
+  // Check Redis blacklist
+  const redis = getRedisClient();
+  const isBlacklisted = await redis.get(`blacklist:${token}`);
+  if (isBlacklisted) {
+    throw ApiError.unauthorized('Session expired. Please log in again.');
   }
 
   const decoded = verifyToken(token);

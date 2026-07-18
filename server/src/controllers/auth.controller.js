@@ -3,6 +3,8 @@ import ApiResponse from '../utils/ApiResponse.js';
 import ApiError from '../utils/ApiError.js';
 import * as authService from '../services/auth.service.js';
 import User from '../models/User.model.js';
+import jwt from 'jsonwebtoken';
+import { getRedisClient } from '../config/redis.js';
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
@@ -40,6 +42,31 @@ export const refresh = asyncHandler(async (req, res) => {
 });
 
 export const logout = asyncHandler(async (req, res) => {
+  // Extract token
+  let token;
+  if (req.headers.authorization?.startsWith('Bearer ')) {
+    token = req.headers.authorization.split(' ')[1];
+  } else if (req.cookies?.accessToken) {
+    token = req.cookies.accessToken;
+  }
+
+  if (token) {
+    try {
+      const redis = getRedisClient();
+      const decoded = jwt.decode(token);
+      if (decoded && decoded.exp) {
+        const secondsUntilExpiry = decoded.exp - Math.floor(Date.now() / 1000);
+        if (secondsUntilExpiry > 0) {
+          await redis.set(`blacklist:${token}`, '1', 'EX', secondsUntilExpiry);
+        }
+      } else {
+        await redis.set(`blacklist:${token}`, '1', 'EX', 86400); // 1 day fallback
+      }
+    } catch (err) {
+      console.error('Failed to blacklist token in Redis:', err);
+    }
+  }
+
   await authService.logoutUser(req.user._id);
   res.clearCookie('refreshToken');
   return res.status(200).json(new ApiResponse(200, null, 'Logged out successfully'));

@@ -53,7 +53,7 @@ const seedDatabase = async () => {
       password: 'Password123!',
       mobile: '9876543210',
       orgId: org._id,
-      role: 'employee',
+      role: 'admin',
       department: 'Engineering',
       manager: 'Siddharth Shah',
       officeLocation: 'Tower A, Floor 5',
@@ -219,6 +219,21 @@ const seedDatabase = async () => {
     ride1.passengers.push({ userId: priya._id, tripId: trip1._id, seatsBooked: 1 });
     await ride1.save();
 
+    // Future ride offered by Krishna that Raj Patel books (making Raj a passenger too!)
+    const trip2 = await Trip.create({
+      rideId: ride2._id,
+      passengerId: raj._id,
+      driverId: krishna._id,
+      orgId: org._id,
+      seatsBooked: 1,
+      fare: 120,
+      status: 'booked',
+    });
+
+    ride2.availableSeats -= 1;
+    ride2.passengers.push({ userId: raj._id, tripId: trip2._id, seatsBooked: 1 });
+    await ride2.save();
+
     // Past completed trip 1 (Priya rode with Raj)
     const pastDate1 = new Date();
     pastDate1.setDate(pastDate1.getDate() - 5);
@@ -256,7 +271,44 @@ const seedDatabase = async () => {
       paidAt: pastDate1,
     });
 
-    // Create wallet transactions for past completed trip
+    // Past completed trip 2 (Raj rode with Krishna)
+    const pastDate2 = new Date();
+    pastDate2.setDate(pastDate2.getDate() - 3);
+
+    const pastRide2 = await Ride.create({
+      driverId: krishna._id,
+      vehicleId: krishnaVehicle._id,
+      orgId: org._id,
+      startLocation: { address: 'Ahmedabad (ISKCON)', lat: 23.0225, lng: 72.5714 },
+      destination: { address: 'Gandhinagar (Infocity)', lat: 23.1974, lng: 72.6326 },
+      dateTime: pastDate2,
+      totalSeats: 3,
+      availableSeats: 2,
+      farePerSeat: 120,
+      status: 'completed',
+      distanceKm: 25,
+      durationMin: 35,
+      passengers: [{ userId: raj._id, seatsBooked: 1 }],
+    });
+
+    const pastTrip2 = await Trip.create({
+      rideId: pastRide2._id,
+      passengerId: raj._id,
+      driverId: krishna._id,
+      orgId: org._id,
+      seatsBooked: 1,
+      fare: 120,
+      status: 'completed_paid',
+      distanceKm: 25,
+      co2SavedKg: 3.0, // 25km * 120g/km
+      fuelSavedLitres: 1.66,
+      bookedAt: pastDate2,
+      startedAt: pastDate2,
+      completedAt: pastDate2,
+      paidAt: pastDate2,
+    });
+
+    // Create wallet transactions for Raj (credits & debits)
     await WalletTransaction.create([
       {
         userId: priya._id,
@@ -277,6 +329,26 @@ const seedDatabase = async () => {
         description: `Fare received for Trip #${pastTrip1._id.toString().slice(-6)}`,
         referenceId: pastTrip1._id,
         referenceModel: 'Trip',
+      },
+      {
+        userId: raj._id,
+        type: 'debit',
+        amount: 120,
+        balanceBefore: 500,
+        balanceAfter: 380,
+        description: `Fare payment for Trip #${pastTrip2._id.toString().slice(-6)}`,
+        referenceId: pastTrip2._id,
+        referenceModel: 'Trip',
+      },
+      {
+        userId: krishna._id,
+        type: 'credit',
+        amount: 120,
+        balanceBefore: 80,
+        balanceAfter: 200,
+        description: `Fare received for Trip #${pastTrip2._id.toString().slice(-6)}`,
+        referenceId: pastTrip2._id,
+        referenceModel: 'Trip',
       }
     ]);
 
@@ -285,7 +357,10 @@ const seedDatabase = async () => {
     priya.co2SavedKg = 0.96;
     await priya.save();
 
+    raj.totalRides = 1;
     raj.totalRidesOffered = 1;
+    raj.co2SavedKg = 3.0;
+    raj.walletBalance = 380;
     await raj.save();
 
     console.log('🏁 Seeding finished successfully!');

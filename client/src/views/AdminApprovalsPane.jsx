@@ -60,11 +60,15 @@ export default function AdminApprovalsPane() {
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-2">
                       <p className="text-xs font-bold text-slate-800">{u.name}</p>
-                      {u.drivingLicenseAiStatus === 'verified' && (
+                      {u.drivingLicenseAiStatus === 'verified' ? (
                         <span className="inline-flex items-center gap-1 text-[9px] font-bold bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full border border-emerald-100">
                           <CheckCircle2 className="w-2.5 h-2.5" /> AI Confirmed
                         </span>
-                      )}
+                      ) : u.drivingLicenseAiStatus === 'failed' ? (
+                        <span className="inline-flex items-center gap-1 text-[9px] font-bold bg-rose-50 text-rose-600 px-2 py-0.5 rounded-full border border-rose-100 animate-pulse">
+                          <AlertTriangle className="w-2.5 h-2.5" /> AI Verification Failed
+                        </span>
+                      ) : null}
                     </div>
                     <p className="text-[10px] text-slate-400 font-semibold">{u.email}</p>
                     <p className="text-[10px] text-slate-500 font-mono bg-slate-100 px-1.5 py-0.5 rounded w-fit mt-1">Submitted DL: {u.drivingLicense}</p>
@@ -112,7 +116,7 @@ export default function AdminApprovalsPane() {
                         <img
                           src={u.drivingLicensePhoto}
                           alt="Driving License Document Scan"
-                          className="w-full h-auto max-h-64 object-contain rounded hover:scale-105 transition-all duration-300"
+                          className="w-full h-auto max-h-64 object-contain rounded hover:scale-105 transition-all duration-300 animate-fade-in"
                         />
                       </div>
                     </div>
@@ -121,10 +125,20 @@ export default function AdminApprovalsPane() {
                     <div className="space-y-3">
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">AI OCR Verification Details</span>
                       <div className="bg-white border border-slate-200 p-4 rounded-lg shadow-2xs space-y-3.5">
-                        <div className="flex items-center gap-2 text-xs font-bold text-emerald-700">
-                          <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                          <span>AI Check Auto-Confirm Score: 100% Match</span>
-                        </div>
+                        {u.drivingLicenseAiStatus === 'verified' ? (
+                          <div className="flex items-center gap-2 text-xs font-bold text-emerald-700">
+                            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                            <span>AI Check Auto-Confirm Score: 100% Match</span>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col gap-1 p-2 bg-rose-50 border border-rose-100 rounded text-xs text-rose-700 font-semibold">
+                            <div className="flex items-center gap-2">
+                              <AlertTriangle className="w-4 h-4 text-rose-600" />
+                              <span>AI Flagged: Mismatch / Invalid Document</span>
+                            </div>
+                            <span className="text-[10px] text-rose-600 font-normal mt-1">Reason: {aiDetails.error || 'The uploaded file does not appear to be a valid Indian driving license.'}</span>
+                          </div>
+                        )}
 
                         <div className="grid grid-cols-2 gap-4 text-xs">
                           <div>
@@ -141,26 +155,28 @@ export default function AdminApprovalsPane() {
                           </div>
                           <div>
                             <span className="text-[10px] font-semibold text-slate-400 block uppercase">Validity Period</span>
-                            <span className={`font-bold ${new Date(aiDetails.validity?.split('/').reverse().join('-')) > new Date() ? 'text-emerald-600' : 'text-rose-500'}`}>
+                            <span className={`font-bold ${aiDetails.validity && aiDetails.validity !== 'N/A' && new Date(aiDetails.validity.split('/').reverse().join('-')) > new Date() ? 'text-emerald-600' : 'text-rose-500'}`}>
                               {aiDetails.validity || 'N/A'}
                             </span>
                           </div>
                         </div>
 
                         {/* Name validation check */}
-                        <div className="border-t border-slate-100 pt-3 flex items-center gap-2">
-                          {u.name.toLowerCase() === (aiDetails.name || '').toLowerCase() ? (
-                            <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 font-semibold">
-                              <UserCheck className="w-3.5 h-3.5 text-emerald-500" />
-                              <span>Profiles Name matches document Name perfectly.</span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-1.5 text-[11px] text-amber-600 font-semibold">
-                              <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-                              <span>Minor spelling variations matching profile name.</span>
-                            </div>
-                          )}
-                        </div>
+                        {u.drivingLicenseAiStatus === 'verified' && (
+                          <div className="border-t border-slate-100 pt-3 flex items-center gap-2">
+                            {u.name.toLowerCase() === (aiDetails.name || '').toLowerCase() ? (
+                              <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 font-semibold">
+                                <UserCheck className="w-3.5 h-3.5 text-emerald-500" />
+                                <span>Profiles Name matches document Name perfectly.</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1.5 text-[11px] text-amber-600 font-semibold">
+                                <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                                <span>Minor spelling variations matching profile name.</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

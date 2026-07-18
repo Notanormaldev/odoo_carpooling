@@ -136,7 +136,7 @@ const seedDatabase = async () => {
       profilePhoto: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
       drivingLicense: 'DL-03201800999',
       drivingLicenseStatus: 'pending',
-      drivingLicensePhoto: 'https://images.unsplash.com/photo-1554415707-6e8cfc93fe23?w=800',
+      drivingLicensePhoto: '/seeds/delhi-dl.png',
       drivingLicenseAiStatus: 'verified',
       drivingLicenseAiDetails: {
         name: 'ARJUN MEHTA',
@@ -280,13 +280,14 @@ const seedDatabase = async () => {
       profilePhoto: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150',
       drivingLicense: 'DL-11201603560',
       drivingLicenseStatus: 'pending',
-      drivingLicensePhoto: '/seeds/delhi-dl.png',
-      drivingLicenseAiStatus: 'verified',
+      drivingLicensePhoto: '/seeds/dummy-blue-card.png',
+      drivingLicenseAiStatus: 'failed',
       drivingLicenseAiDetails: {
-        name: 'LIPIKA SAIKIA RAO',
-        licenseNumber: 'DL-11201603560',
-        dob: '25/06/1981',
-        validity: '09/07/2028'
+        error: 'OCR Mismatch: Name on document does not match profile name',
+        name: 'UNKNOWN / CARD UNREADABLE',
+        licenseNumber: 'N/A',
+        dob: 'N/A',
+        validity: 'N/A'
       },
       walletBalance: 1500,
       trustScore: 5.0,

@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT;
-const ACCESS_TOKEN_EXPIRY = '15m';
+const ACCESS_TOKEN_EXPIRY = '1d';  // 1 day — refresh token handles long-term security
 const REFRESH_TOKEN_EXPIRY = '7d';
 
 export const generateAccessToken = (payload) => {

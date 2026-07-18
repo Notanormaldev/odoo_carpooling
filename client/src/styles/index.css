@@ -4,25 +4,25 @@
 
 @layer base {
   body {
-    @apply bg-background text-neutral-100 font-sans antialiased overflow-x-hidden;
+    @apply bg-background text-neutral-900 font-sans antialiased overflow-x-hidden;
   }
 }
 
-/* Custom scrollbar matching dark theme */
+/* Custom scrollbar matching light theme */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0a0a0a;
+  background: #f8fafc;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #262626;
+  background: #cbd5e1;
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #404040;
+  background: #94a3b8;
 }

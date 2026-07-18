@@ -36,3 +36,7 @@ chatMessageSchema.index({ senderId: 1 });
 
 const ChatMessage = mongoose.model('ChatMessage', chatMessageSchema);
 export default ChatMessage;
+
+
+
+

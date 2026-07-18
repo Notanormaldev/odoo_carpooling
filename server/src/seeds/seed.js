@@ -20,6 +20,7 @@ const seedDatabase = async () => {
     await Vehicle.deleteMany({});
     await Ride.deleteMany({});
     await Trip.deleteMany({});
+    await WalletTransaction.deleteMany({});
 
     console.log('🏢 Creating Organization...');
     const org = await Organization.create({
@@ -28,13 +29,13 @@ const seedDatabase = async () => {
       industry: 'Software Services',
       adminContact: 'admin@co.com',
       allowedEmailDomain: 'co.com',
-      logo: 'https://ik.imagekit.io/default/odoo_logo.png',
+      logo: '/logo.png',
       fuelCostPerLitre: 96.5,
       costPerKm: 8.0,
       travelCostOperational: 2.5,
     });
 
-    console.log('👥 Creating Users (Admin & Employees)...');
+    console.log('👥 Creating Users (Admin, Drivers & Employees)...');
     // Admin user
     const admin = await User.create({
       name: 'Odoo Admin',
@@ -46,7 +47,7 @@ const seedDatabase = async () => {
       platformAccess: true,
     });
 
-    // Driver 1: Raj Patel
+    // 10 Employee users
     const raj = await User.create({
       name: 'Raj Patel',
       email: 'raj.patel@co.com',
@@ -57,15 +58,14 @@ const seedDatabase = async () => {
       department: 'Engineering',
       manager: 'Siddharth Shah',
       officeLocation: 'Tower A, Floor 5',
-      profilePhoto: 'https://ik.imagekit.io/default/raj_patel.jpg',
+      profilePhoto: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
       drivingLicense: 'DL-IND-9992388',
-      walletBalance: 500,
+      walletBalance: 2500,
       trustScore: 4.8,
       isEmailVerified: true,
       platformAccess: true,
     });
 
-    // Driver 2: Krishna Singh
     const krishna = await User.create({
       name: 'Krishna Singh',
       email: 'krishna.s@co.com',
@@ -76,15 +76,14 @@ const seedDatabase = async () => {
       department: 'Sales',
       manager: 'Nisha Vyas',
       officeLocation: 'Tower B, Floor 2',
-      profilePhoto: 'https://ik.imagekit.io/default/krishna_s.jpg',
+      profilePhoto: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150',
       drivingLicense: 'DL-IND-8883299',
-      walletBalance: 200,
+      walletBalance: 1200,
       trustScore: 4.9,
       isEmailVerified: true,
       platformAccess: true,
     });
 
-    // Passenger: Priya Nair
     const priya = await User.create({
       name: 'Priya Nair',
       email: 'priya.nair@co.com',
@@ -95,15 +94,103 @@ const seedDatabase = async () => {
       department: 'HR',
       manager: 'Anjali Sharma',
       officeLocation: 'Tower A, Floor 1',
-      profilePhoto: 'https://ik.imagekit.io/default/priya_nair.jpg',
-      walletBalance: 1000,
+      profilePhoto: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
+      walletBalance: 1800,
       trustScore: 5.0,
       isEmailVerified: true,
       platformAccess: true,
     });
 
+    const amit = await User.create({
+      name: 'Amit Sharma',
+      email: 'amit.sharma@co.com',
+      password: 'Password123!',
+      mobile: '9654321876',
+      orgId: org._id,
+      role: 'employee',
+      department: 'Marketing',
+      manager: 'Nisha Vyas',
+      officeLocation: 'Tower B, Floor 3',
+      profilePhoto: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
+      drivingLicense: 'DL-IND-7776512',
+      walletBalance: 850,
+      trustScore: 4.6,
+      isEmailVerified: true,
+      platformAccess: true,
+    });
+
+    const sneha = await User.create({
+      name: 'Sneha Gupta',
+      email: 'sneha.gupta@co.com',
+      password: 'Password123!',
+      mobile: '8543210987',
+      orgId: org._id,
+      role: 'employee',
+      department: 'Product',
+      manager: 'Siddharth Shah',
+      officeLocation: 'Tower A, Floor 4',
+      profilePhoto: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150',
+      walletBalance: 3100,
+      trustScore: 4.7,
+      isEmailVerified: true,
+      platformAccess: true,
+    });
+
+    const rohan = await User.create({
+      name: 'Rohan Mehta',
+      email: 'rohan.mehta@co.com',
+      password: 'Password123!',
+      mobile: '7432109876',
+      orgId: org._id,
+      role: 'employee',
+      department: 'Finance',
+      manager: 'Ketan Patel',
+      officeLocation: 'Tower B, Floor 1',
+      profilePhoto: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150',
+      drivingLicense: 'DL-IND-6663245',
+      walletBalance: 900,
+      trustScore: 4.5,
+      isEmailVerified: true,
+      platformAccess: true,
+    });
+
+    const divya = await User.create({
+      name: 'Divya Desai',
+      email: 'divya.desai@co.com',
+      password: 'Password123!',
+      mobile: '6321098765',
+      orgId: org._id,
+      role: 'employee',
+      department: 'Support',
+      manager: 'Anjali Sharma',
+      officeLocation: 'Tower A, Floor 2',
+      profilePhoto: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150',
+      walletBalance: 400,
+      trustScore: 4.8,
+      isEmailVerified: true,
+      platformAccess: true,
+    });
+
+    const rahul = await User.create({
+      name: 'Rahul Verma',
+      email: 'rahul.verma@co.com',
+      password: 'Password123!',
+      mobile: '9210987654',
+      orgId: org._id,
+      role: 'employee',
+      department: 'Engineering',
+      manager: 'Siddharth Shah',
+      officeLocation: 'Tower A, Floor 5',
+      profilePhoto: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150',
+      drivingLicense: 'DL-IND-5554312',
+      walletBalance: 1500,
+      trustScore: 4.4,
+      isEmailVerified: true,
+      platformAccess: true,
+    });
+
     console.log('🚗 Registering and approving Vehicles...');
-    // Raj's Swift Dzire
+    // Vehicles
     const rajVehicle = await Vehicle.create({
       ownerId: raj._id,
       orgId: org._id,
@@ -117,7 +204,6 @@ const seedDatabase = async () => {
       approvedBy: admin._id,
     });
 
-    // Krishna's Alto 800
     const krishnaVehicle = await Vehicle.create({
       ownerId: krishna._id,
       orgId: org._id,
@@ -131,12 +217,51 @@ const seedDatabase = async () => {
       approvedBy: admin._id,
     });
 
+    const amitVehicle = await Vehicle.create({
+      ownerId: amit._id,
+      orgId: org._id,
+      model: 'Hyundai i20',
+      registrationNumber: 'GJ01CD9876',
+      seatingCapacity: 4,
+      fuelType: 'diesel',
+      fuelEfficiency: 20,
+      status: 'active',
+      approvedAt: new Date(),
+      approvedBy: admin._id,
+    });
+
+    const rohanVehicle = await Vehicle.create({
+      ownerId: rohan._id,
+      orgId: org._id,
+      model: 'Honda City',
+      registrationNumber: 'GJ01EF4321',
+      seatingCapacity: 5,
+      fuelType: 'petrol',
+      fuelEfficiency: 15,
+      status: 'active',
+      approvedAt: new Date(),
+      approvedBy: admin._id,
+    });
+
+    const rahulVehicle = await Vehicle.create({
+      ownerId: rahul._id,
+      orgId: org._id,
+      model: 'Tata Nexon',
+      registrationNumber: 'GJ01GH5555',
+      seatingCapacity: 5,
+      fuelType: 'cng',
+      fuelEfficiency: 16,
+      status: 'active',
+      approvedAt: new Date(),
+      approvedBy: admin._id,
+    });
+
     // Update org employee count
-    await Organization.findByIdAndUpdate(org._id, { totalRegisteredEmployees: 4 });
+    await Organization.findByIdAndUpdate(org._id, { totalRegisteredEmployees: 9 });
 
     console.log('📅 Seeding Ride Pools and Trips...');
-    
-    // Future ride 1 (published by Raj)
+
+    // Future ride 1 (Raj)
     const futureDate1 = new Date();
     futureDate1.setDate(futureDate1.getDate() + 2);
     futureDate1.setHours(9, 0, 0, 0);
@@ -149,12 +274,12 @@ const seedDatabase = async () => {
       destination: { address: 'Infocity, Gandhinagar', lat: 23.1974, lng: 72.6326 },
       dateTime: futureDate1,
       totalSeats: 3,
-      availableSeats: 3,
+      availableSeats: 2,
       farePerSeat: 80,
       status: 'published',
     });
 
-    // Future ride 2 (published by Krishna)
+    // Future ride 2 (Krishna)
     const futureDate2 = new Date();
     futureDate2.setDate(futureDate2.getDate() + 1);
     futureDate2.setHours(18, 30, 0, 0);
@@ -167,14 +292,66 @@ const seedDatabase = async () => {
       destination: { address: 'Sargasan, Gandhinagar', lat: 23.1947, lng: 72.6105 },
       dateTime: futureDate2,
       totalSeats: 3,
-      availableSeats: 3,
+      availableSeats: 2,
       farePerSeat: 120,
       status: 'published',
     });
 
-    console.log('📅 Seeding specific rides for July 31, 2026 (Ahmedabad to Gandhinagar)...');
-    
-    // July 31 ride 1
+    // Future ride 3 (Amit)
+    const futureDate3 = new Date();
+    futureDate3.setDate(futureDate3.getDate() + 3);
+    futureDate3.setHours(8, 30, 0, 0);
+
+    const ride3 = await Ride.create({
+      driverId: amit._id,
+      vehicleId: amitVehicle._id,
+      orgId: org._id,
+      startLocation: { address: 'Vastrapur, Ahmedabad', lat: 23.0379, lng: 72.5273 },
+      destination: { address: 'Infocity, Gandhinagar', lat: 23.1974, lng: 72.6326 },
+      dateTime: futureDate3,
+      totalSeats: 3,
+      availableSeats: 3,
+      farePerSeat: 150,
+      status: 'published',
+    });
+
+    // Future ride 4 (Rohan)
+    const futureDate4 = new Date();
+    futureDate4.setDate(futureDate4.getDate() + 4);
+    futureDate4.setHours(17, 45, 0, 0);
+
+    const ride4 = await Ride.create({
+      driverId: rohan._id,
+      vehicleId: rohanVehicle._id,
+      orgId: org._id,
+      startLocation: { address: 'Infocity, Gandhinagar', lat: 23.1974, lng: 72.6326 },
+      destination: { address: 'Prahlad Nagar, Ahmedabad', lat: 22.9982, lng: 72.5034 },
+      dateTime: futureDate4,
+      totalSeats: 4,
+      availableSeats: 4,
+      farePerSeat: 180,
+      status: 'published',
+    });
+
+    // Future ride 5 (Rahul)
+    const futureDate5 = new Date();
+    futureDate5.setDate(futureDate5.getDate() + 1);
+    futureDate5.setHours(9, 15, 0, 0);
+
+    const ride5 = await Ride.create({
+      driverId: rahul._id,
+      vehicleId: rahulVehicle._id,
+      orgId: org._id,
+      startLocation: { address: 'Chandkheda, Ahmedabad', lat: 23.1118, lng: 72.5855 },
+      destination: { address: 'Infocity, Gandhinagar', lat: 23.1974, lng: 72.6326 },
+      dateTime: futureDate5,
+      totalSeats: 4,
+      availableSeats: 3,
+      farePerSeat: 90,
+      status: 'published',
+    });
+
+    // July 31 rides (Ahmedabad to Gandhinagar)
     const jul31Date1 = new Date('2026-07-31T09:00:00.000Z');
     await Ride.create({
       driverId: raj._id,
@@ -189,7 +366,6 @@ const seedDatabase = async () => {
       status: 'published',
     });
 
-    // July 31 ride 2
     const jul31Date2 = new Date('2026-07-31T18:30:00.000Z');
     await Ride.create({
       driverId: krishna._id,
@@ -204,7 +380,8 @@ const seedDatabase = async () => {
       status: 'published',
     });
 
-    // Booked Trip (Priya booked Raj's future ride)
+    console.log('📌 Creating active trips (bookings)...');
+    // Priya booked Raj's future ride
     const trip1 = await Trip.create({
       rideId: ride1._id,
       passengerId: priya._id,
@@ -214,12 +391,10 @@ const seedDatabase = async () => {
       fare: 80,
       status: 'booked',
     });
-
-    ride1.availableSeats -= 1;
     ride1.passengers.push({ userId: priya._id, tripId: trip1._id, seatsBooked: 1 });
     await ride1.save();
 
-    // Future ride offered by Krishna that Raj Patel books (making Raj a passenger too!)
+    // Raj booked Krishna's future ride
     const trip2 = await Trip.create({
       rideId: ride2._id,
       passengerId: raj._id,
@@ -229,15 +404,26 @@ const seedDatabase = async () => {
       fare: 120,
       status: 'booked',
     });
-
-    ride2.availableSeats -= 1;
     ride2.passengers.push({ userId: raj._id, tripId: trip2._id, seatsBooked: 1 });
     await ride2.save();
 
-    // Past completed trip 1 (Priya rode with Raj)
+    // Sneha booked Rahul's future ride
+    const trip3 = await Trip.create({
+      rideId: ride5._id,
+      passengerId: sneha._id,
+      driverId: rahul._id,
+      orgId: org._id,
+      seatsBooked: 1,
+      fare: 90,
+      status: 'booked',
+    });
+    ride5.passengers.push({ userId: sneha._id, tripId: trip3._id, seatsBooked: 1 });
+    await ride5.save();
+
+    console.log('📌 Seeding Completed (Past) Trips...');
+    // Past Ride 1
     const pastDate1 = new Date();
     pastDate1.setDate(pastDate1.getDate() - 5);
-    
     const pastRide1 = await Ride.create({
       driverId: raj._id,
       vehicleId: rajVehicle._id,
@@ -263,7 +449,7 @@ const seedDatabase = async () => {
       fare: 80,
       status: 'completed_paid',
       distanceKm: 8,
-      co2SavedKg: 0.96, // 8km * 120g/km
+      co2SavedKg: 0.96,
       fuelSavedLitres: 0.53,
       bookedAt: pastDate1,
       startedAt: pastDate1,
@@ -271,10 +457,9 @@ const seedDatabase = async () => {
       paidAt: pastDate1,
     });
 
-    // Past completed trip 2 (Raj rode with Krishna)
+    // Past Ride 2
     const pastDate2 = new Date();
     pastDate2.setDate(pastDate2.getDate() - 3);
-
     const pastRide2 = await Ride.create({
       driverId: krishna._id,
       vehicleId: krishnaVehicle._id,
@@ -300,7 +485,7 @@ const seedDatabase = async () => {
       fare: 120,
       status: 'completed_paid',
       distanceKm: 25,
-      co2SavedKg: 3.0, // 25km * 120g/km
+      co2SavedKg: 3.0,
       fuelSavedLitres: 1.66,
       bookedAt: pastDate2,
       startedAt: pastDate2,
@@ -308,14 +493,68 @@ const seedDatabase = async () => {
       paidAt: pastDate2,
     });
 
-    // Create wallet transactions for Raj (credits & debits)
+    // Past Ride 3
+    const pastDate3 = new Date();
+    pastDate3.setDate(pastDate3.getDate() - 2);
+    const pastRide3 = await Ride.create({
+      driverId: amit._id,
+      vehicleId: amitVehicle._id,
+      orgId: org._id,
+      startLocation: { address: 'Vastrapur, Ahmedabad', lat: 23.0379, lng: 72.5273 },
+      destination: { address: 'Infocity, Gandhinagar', lat: 23.1974, lng: 72.6326 },
+      dateTime: pastDate3,
+      totalSeats: 3,
+      availableSeats: 1,
+      farePerSeat: 150,
+      status: 'completed',
+      distanceKm: 22,
+      durationMin: 30,
+      passengers: [{ userId: sneha._id, seatsBooked: 1 }, { userId: divya._id, seatsBooked: 1 }],
+    });
+
+    const pastTrip3 = await Trip.create({
+      rideId: pastRide3._id,
+      passengerId: sneha._id,
+      driverId: amit._id,
+      orgId: org._id,
+      seatsBooked: 1,
+      fare: 150,
+      status: 'completed_paid',
+      distanceKm: 22,
+      co2SavedKg: 2.64,
+      fuelSavedLitres: 1.46,
+      bookedAt: pastDate3,
+      startedAt: pastDate3,
+      completedAt: pastDate3,
+      paidAt: pastDate3,
+    });
+
+    const pastTrip4 = await Trip.create({
+      rideId: pastRide3._id,
+      passengerId: divya._id,
+      driverId: amit._id,
+      orgId: org._id,
+      seatsBooked: 1,
+      fare: 150,
+      status: 'completed_paid',
+      distanceKm: 22,
+      co2SavedKg: 2.64,
+      fuelSavedLitres: 1.46,
+      bookedAt: pastDate3,
+      startedAt: pastDate3,
+      completedAt: pastDate3,
+      paidAt: pastDate3,
+    });
+
+    console.log('📌 Seeding wallet transactions...');
     await WalletTransaction.create([
+      // Trip 1
       {
         userId: priya._id,
         type: 'debit',
         amount: 80,
-        balanceBefore: 1080,
-        balanceAfter: 1000,
+        balanceBefore: 1880,
+        balanceAfter: 1800,
         description: `Fare payment for Trip #${pastTrip1._id.toString().slice(-6)}`,
         referenceId: pastTrip1._id,
         referenceModel: 'Trip',
@@ -324,18 +563,19 @@ const seedDatabase = async () => {
         userId: raj._id,
         type: 'credit',
         amount: 80,
-        balanceBefore: 420,
-        balanceAfter: 500,
+        balanceBefore: 2420,
+        balanceAfter: 2500,
         description: `Fare received for Trip #${pastTrip1._id.toString().slice(-6)}`,
         referenceId: pastTrip1._id,
         referenceModel: 'Trip',
       },
+      // Trip 2
       {
         userId: raj._id,
         type: 'debit',
         amount: 120,
-        balanceBefore: 500,
-        balanceAfter: 380,
+        balanceBefore: 2500,
+        balanceAfter: 2380,
         description: `Fare payment for Trip #${pastTrip2._id.toString().slice(-6)}`,
         referenceId: pastTrip2._id,
         referenceModel: 'Trip',
@@ -344,10 +584,53 @@ const seedDatabase = async () => {
         userId: krishna._id,
         type: 'credit',
         amount: 120,
-        balanceBefore: 80,
-        balanceAfter: 200,
+        balanceBefore: 1080,
+        balanceAfter: 1200,
         description: `Fare received for Trip #${pastTrip2._id.toString().slice(-6)}`,
         referenceId: pastTrip2._id,
+        referenceModel: 'Trip',
+      },
+      // Trip 3 (Sneha)
+      {
+        userId: sneha._id,
+        type: 'debit',
+        amount: 150,
+        balanceBefore: 3250,
+        balanceAfter: 3100,
+        description: `Fare payment for Trip #${pastTrip3._id.toString().slice(-6)}`,
+        referenceId: pastTrip3._id,
+        referenceModel: 'Trip',
+      },
+      // Trip 4 (Divya)
+      {
+        userId: divya._id,
+        type: 'debit',
+        amount: 150,
+        balanceBefore: 550,
+        balanceAfter: 400,
+        description: `Fare payment for Trip #${pastTrip4._id.toString().slice(-6)}`,
+        referenceId: pastTrip4._id,
+        referenceModel: 'Trip',
+      },
+      // Amit Credits
+      {
+        userId: amit._id,
+        type: 'credit',
+        amount: 150,
+        balanceBefore: 550,
+        balanceAfter: 700,
+        description: `Fare received for Trip #${pastTrip3._id.toString().slice(-6)}`,
+        referenceId: pastTrip3._id,
+        referenceModel: 'Trip',
+      },
+      {
+        userId: amit._id,
+        type: 'credit',
+        amount: 150,
+        balanceBefore: 700,
+        balanceAfter: 850,
+        description: `Fare received for Trip #${pastTrip4._id.toString().slice(-6)}`,
+        referenceId: pastTrip4._id,
         referenceModel: 'Trip',
       }
     ]);
@@ -360,8 +643,18 @@ const seedDatabase = async () => {
     raj.totalRides = 1;
     raj.totalRidesOffered = 1;
     raj.co2SavedKg = 3.0;
-    raj.walletBalance = 380;
     await raj.save();
+
+    sneha.totalRides = 1;
+    sneha.co2SavedKg = 2.64;
+    await sneha.save();
+
+    divya.totalRides = 1;
+    divya.co2SavedKg = 2.64;
+    await divya.save();
+
+    amit.totalRidesOffered = 2;
+    await amit.save();
 
     console.log('🏁 Seeding finished successfully!');
     mongoose.connection.close();

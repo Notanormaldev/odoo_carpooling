@@ -6,6 +6,8 @@ import Vehicle from '../models/Vehicle.model.js';
 import ApiError from '../utils/ApiError.js';
 import { calculateCO2Saved, calculateFuelSaved } from '../utils/co2Calculator.js';
 import { getRedisClient } from '../config/redis.js';
+import WalletTransaction from '../models/WalletTransaction.model.js';
+import Payment from '../models/Payment.model.js';
 
 export const bookRide = async (passengerId, orgId, { rideId, seatsBooked }) => {
   const session = await mongoose.startSession();
@@ -160,7 +162,6 @@ export const updateTripStatus = async (tripId, userId, role, { status, cancellat
       throw ApiError.badRequest('Trip must be started or in progress to complete');
     }
 
-    trip.status = 'payment_pending';
     trip.completedAt = new Date();
 
     // Fetch vehicle efficiency & distance
@@ -180,7 +181,90 @@ export const updateTripStatus = async (tripId, userId, role, { status, cancellat
       trip.fuelSavedLitres = fuel.savedLitres;
     }
 
-    await trip.save();
+    // Try automatic wallet payment debit
+    const passenger = await User.findById(trip.passengerId);
+    const driver = await User.findById(trip.driverId);
+
+    if (passenger && driver && passenger.walletBalance >= trip.fare) {
+      const session = await mongoose.startSession();
+      session.startTransaction();
+      try {
+        // Deduct passenger balance
+        const pBalanceBefore = passenger.walletBalance;
+        passenger.walletBalance -= trip.fare;
+        await passenger.save({ session });
+
+        // Credit driver wallet
+        const dBalanceBefore = driver.walletBalance;
+        driver.walletBalance += trip.fare;
+        await driver.save({ session });
+
+        // Create passenger debit txn
+        await WalletTransaction.create(
+          [
+            {
+              userId: trip.passengerId,
+              type: 'debit',
+              amount: trip.fare,
+              balanceBefore: pBalanceBefore,
+              balanceAfter: passenger.walletBalance,
+              description: `Auto-fare payment for Trip #${trip._id.toString().slice(-6)}`,
+              referenceId: trip._id,
+              referenceModel: 'Trip',
+            },
+          ],
+          { session }
+        );
+
+        // Create driver credit txn
+        await WalletTransaction.create(
+          [
+            {
+              userId: trip.driverId,
+              type: 'credit',
+              amount: trip.fare,
+              balanceBefore: dBalanceBefore,
+              balanceAfter: driver.walletBalance,
+              description: `Auto-fare received for Trip #${trip._id.toString().slice(-6)}`,
+              referenceId: trip._id,
+              referenceModel: 'Trip',
+            },
+          ],
+          { session }
+        );
+
+        // Create payment record
+        await Payment.create(
+          [
+            {
+              userId: trip.passengerId,
+              tripId: trip._id,
+              type: 'trip_payment',
+              amount: trip.fare,
+              method: 'wallet',
+              status: 'captured',
+              capturedAt: new Date(),
+            },
+          ],
+          { session }
+        );
+
+        trip.status = 'completed_paid';
+        trip.paidAt = new Date();
+        
+        await session.commitTransaction();
+        session.endSession();
+      } catch (err) {
+        await session.abortTransaction();
+        session.endSession();
+        console.error('❌ Auto-payment transaction failed:', err);
+        // Fallback to payment pending if transaction fails
+        trip.status = 'payment_pending';
+      }
+    } else {
+      // Fallback if passenger has insufficient balance
+      trip.status = 'payment_pending';
+    }
 
     // Increment employee ride statistics
     await User.findByIdAndUpdate(trip.passengerId, {

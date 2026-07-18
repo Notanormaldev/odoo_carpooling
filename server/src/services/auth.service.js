@@ -7,7 +7,10 @@ import { sendEmail } from '../config/brevo.js';
 export const registerUser = async ({ name, email, password, mobile, department, officeLocation }) => {
   // Check org by email domain
   const domain = email.split('@')[1];
-  const org = await Organization.findOne({ allowedEmailDomain: domain, isActive: true });
+  let org = await Organization.findOne({ allowedEmailDomain: domain, isActive: true });
+  if (!org && (domain === 'gmail.com' || process.env.NODE_ENVIRONMENT === 'development')) {
+    org = await Organization.findOne({ isActive: true });
+  }
   if (!org) {
     throw ApiError.forbidden(`No registered organization found for email domain: @${domain}`);
   }
@@ -15,6 +18,9 @@ export const registerUser = async ({ name, email, password, mobile, department, 
   // Check duplicate
   const exists = await User.findOne({ email });
   if (exists) throw ApiError.conflict('Email already registered');
+
+  // Generate OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
   const user = await User.create({
     name,
@@ -25,32 +31,25 @@ export const registerUser = async ({ name, email, password, mobile, department, 
     officeLocation,
     orgId: org._id,
     role: 'employee',
+    isEmailVerified: false,
+    verificationOtp: otp,
+    verificationOtpExpires: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes
   });
 
   // Update org employee count
   await Organization.findByIdAndUpdate(org._id, { $inc: { totalRegisteredEmployees: 1 } });
 
-  // Send welcome email (non-blocking)
+  // Send verification email
   sendEmail({
     to: email,
-    subject: `Welcome to ${org.name} Carpooling Platform`,
-    htmlContent: `<h2>Hi ${name}!</h2><p>Your account has been created. Start carpooling and save fuel 🚗</p>`,
+    subject: `Verify your Email - ${org.name} Carpooling`,
+    htmlContent: `<h2>Hi ${name}!</h2><p>Your verification OTP is <b>${otp}</b>. It is valid for 15 minutes. Start carpooling and save fuel 🚗</p>`,
   }).catch(console.error);
 
-  const tokens = generateTokenPair(user);
-
   return {
-    user: {
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      orgId: user.orgId,
-      profilePhoto: user.profilePhoto,
-      walletBalance: user.walletBalance,
-    },
-    ...tokens,
-    orgName: org.name,
+    success: true,
+    email,
+    message: 'Verification OTP sent to your email.',
   };
 };
 
@@ -63,6 +62,23 @@ export const loginUser = async ({ email, password }) => {
 
   const isMatch = await user.comparePassword(password);
   if (!isMatch) throw ApiError.unauthorized('Invalid email or password');
+
+  // If email is not verified, throw error and send OTP
+  if (!user.isEmailVerified) {
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    user.verificationOtp = otp;
+    user.verificationOtpExpires = new Date(Date.now() + 15 * 60 * 1000);
+    await user.save({ validateBeforeSave: false });
+
+    const org = await Organization.findById(user.orgId);
+    sendEmail({
+      to: email,
+      subject: `Verify your Email - ${org?.name || 'Carpooling'}`,
+      htmlContent: `<h2>Hi ${user.name}!</h2><p>Your verification OTP is <b>${otp}</b>. It is valid for 15 minutes. Start carpooling and save fuel 🚗</p>`,
+    }).catch(console.error);
+
+    throw new ApiError(403, 'Email not verified. OTP sent.', [{ unverified: true, email }]);
+  }
 
   const tokens = generateTokenPair(user);
 
@@ -110,25 +126,29 @@ export const logoutUser = async (userId) => {
   await User.findByIdAndUpdate(userId, { $unset: { refreshToken: 1 } });
 };
 
-export const handleGoogleUser = async ({ googleId, name, email, profilePhoto, isNewUser }) => {
-  if (!isNewUser) {
-    const user = await User.findOne({ email });
+export const handleGoogleUser = async ({ googleId, name, email, profilePhoto }) => {
+  let user = await User.findOne({ email });
+
+  if (user) {
+    if (!user.googleId) {
+      user.googleId = googleId;
+      user.profilePhoto = user.profilePhoto || profilePhoto;
+      await user.save();
+    }
     const tokens = generateTokenPair(user);
-    return { user, ...tokens };
+    const org = await Organization.findById(user.orgId).select('name logo');
+    return { user, org, ...tokens };
   }
 
   // New Google user — check org domain
   const domain = email.split('@')[1];
-  const org = await Organization.findOne({ allowedEmailDomain: domain, isActive: true });
+  let org = await Organization.findOne({ allowedEmailDomain: domain, isActive: true });
+  if (!org && (domain === 'gmail.com' || process.env.NODE_ENVIRONMENT === 'development')) {
+    org = await Organization.findOne({ isActive: true });
+  }
   if (!org) throw ApiError.forbidden(`Organization not found for domain @${domain}`);
 
-  const exists = await User.findOne({ email });
-  if (exists) {
-    const tokens = generateTokenPair(exists);
-    return { user: exists, ...tokens };
-  }
-
-  const user = await User.create({
+  user = await User.create({
     name,
     email,
     googleId,
@@ -140,7 +160,63 @@ export const handleGoogleUser = async ({ googleId, name, email, profilePhoto, is
 
   await Organization.findByIdAndUpdate(org._id, { $inc: { totalRegisteredEmployees: 1 } });
   const tokens = generateTokenPair(user);
-  return { user, ...tokens };
+  return { user, org, ...tokens };
 };
 
-export default { registerUser, loginUser, refreshAccessToken, logoutUser, handleGoogleUser };
+export const verifyOtp = async ({ email, otp }) => {
+  const user = await User.findOne({ email });
+  if (!user) throw ApiError.notFound('User not found');
+  if (user.isEmailVerified) throw ApiError.badRequest('Email is already verified');
+
+  if (!user.verificationOtp || user.verificationOtp !== otp || new Date() > user.verificationOtpExpires) {
+    throw ApiError.badRequest('Invalid or expired OTP');
+  }
+
+  user.isEmailVerified = true;
+  user.verificationOtp = undefined;
+  user.verificationOtpExpires = undefined;
+  await user.save();
+
+  const tokens = generateTokenPair(user);
+  user.refreshToken = tokens.refreshToken;
+  await user.save({ validateBeforeSave: false });
+
+  const org = await Organization.findById(user.orgId).select('name logo');
+  return {
+    user: {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      orgId: user.orgId,
+      profilePhoto: user.profilePhoto,
+      walletBalance: user.walletBalance,
+      trustScore: user.trustScore,
+    },
+    org,
+    ...tokens,
+  };
+};
+
+export const resendOtp = async ({ email }) => {
+  const user = await User.findOne({ email });
+  if (!user) throw ApiError.notFound('User not found');
+  if (user.isEmailVerified) throw ApiError.badRequest('Email is already verified');
+
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  user.verificationOtp = otp;
+  user.verificationOtpExpires = new Date(Date.now() + 15 * 60 * 1000);
+  await user.save({ validateBeforeSave: false });
+
+  const org = await Organization.findById(user.orgId);
+
+  await sendEmail({
+    to: email,
+    subject: `Verify your Email - ${org?.name || 'Carpooling'}`,
+    htmlContent: `<h2>Hi ${user.name}!</h2><p>Your new verification OTP is <b>${otp}</b>. It is valid for 15 minutes. Start carpooling and save fuel 🚗</p>`,
+  });
+
+  return { success: true, message: 'OTP resent successfully.' };
+};
+
+export default { registerUser, loginUser, refreshAccessToken, logoutUser, handleGoogleUser, verifyOtp, resendOtp };

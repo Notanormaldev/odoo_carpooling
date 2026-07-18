@@ -2,11 +2,12 @@ import asyncHandler from '../utils/asyncHandler.js';
 import ApiResponse from '../utils/ApiResponse.js';
 import ApiError from '../utils/ApiError.js';
 import * as authService from '../services/auth.service.js';
+import User from '../models/User.model.js';
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENVIRONMENT === 'production',
-  sameSite: 'strict',
+  sameSite: process.env.NODE_ENVIRONMENT === 'production' ? 'strict' : 'lax',
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
 };
 
@@ -63,7 +64,29 @@ export const googleCallback = asyncHandler(async (req, res) => {
 });
 
 export const getMe = asyncHandler(async (req, res) => {
-  return res.status(200).json(new ApiResponse(200, req.user, 'User profile fetched'));
+  const user = await User.findById(req.user._id).populate('orgId', 'name logo');
+  return res.status(200).json(new ApiResponse(200, user, 'User profile fetched'));
 });
 
-export default { register, login, refresh, logout, googleCallback, getMe };
+export const verifyOtp = asyncHandler(async (req, res) => {
+  const { email, otp } = req.body;
+  if (!email || !otp) {
+    throw ApiError.badRequest('Email and OTP are required');
+  }
+  const result = await authService.verifyOtp({ email, otp });
+  res.cookie('refreshToken', result.refreshToken, COOKIE_OPTIONS);
+  return res.status(200).json(
+    new ApiResponse(200, { accessToken: result.accessToken, user: result.user, org: result.org }, 'Email verified successfully')
+  );
+});
+
+export const resendOtp = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    throw ApiError.badRequest('Email is required');
+  }
+  const result = await authService.resendOtp({ email });
+  return res.status(200).json(new ApiResponse(200, null, result.message));
+});
+
+export default { register, login, refresh, logout, googleCallback, getMe, verifyOtp, resendOtp };

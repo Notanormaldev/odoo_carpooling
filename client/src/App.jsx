@@ -1,4 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
+import toast, { Toaster } from 'react-hot-toast';
+import '@maptiler/sdk/dist/maptiler-sdk.css';
 import { BrowserRouter, Routes, Route, Link, useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { 
   Car, Shield, Wallet, BarChart3, Clock, Settings, LogOut, Search, MapPin, Calendar, 
@@ -9,7 +11,7 @@ import useAuthStore from './store/authStore';
 import api from './api/axios';
 
 // ─── MAPTILER CONFIG ────────────────────────────────────────────────
-maptilersdk.config.apiKey = 'RL13CDEQU2gZu8sIcdc0';
+maptilersdk.config.apiKey = import.meta.env.VITE_MAPTILER_API_KEY || 'RL13CDEQU2gZu8sIcdc0';
 
 export default function App() {
   const { loadUser, loading } = useAuthStore();
@@ -27,14 +29,24 @@ export default function App() {
   }
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<LoginView />} />
-        <Route path="/signup" element={<SignupView />} />
-        <Route path="/auth/google/success" element={<GoogleSuccessHandler />} />
-        <Route path="/*" element={<ProtectedRoute><MainLayout /></ProtectedRoute>} />
-      </Routes>
-    </BrowserRouter>
+    <>
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 3500,
+          style: { borderRadius: '8px', fontSize: '13px', fontWeight: 500 },
+          success: { iconTheme: { primary: '#e85d4a', secondary: '#fff' } },
+        }}
+      />
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <Routes>
+          <Route path="/login" element={<LoginView />} />
+          <Route path="/signup" element={<SignupView />} />
+          <Route path="/auth/google/success" element={<GoogleSuccessHandler />} />
+          <Route path="/*" element={<ProtectedRoute><MainLayout /></ProtectedRoute>} />
+        </Routes>
+      </BrowserRouter>
+    </>
   );
 }
 
@@ -98,9 +110,7 @@ function LoginView() {
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white border border-slate-200 rounded-lg p-8 shadow-sm">
         <div className="flex items-center gap-3 mb-8">
-          <div className="w-10 h-10 bg-[#e85d4a]/10 rounded flex items-center justify-center">
-            <Car className="w-6 h-6 text-[#e85d4a]" />
-          </div>
+          <img src="/logo.png" alt="Carpooling" className="w-12 h-12 object-contain rounded-lg" />
           <div>
             <h1 className="text-xl font-bold tracking-tight text-slate-800">Carpooling</h1>
             <p className="text-xs text-slate-400">Enterprise Mobility Platform</p>
@@ -203,7 +213,14 @@ function SignupView() {
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white border border-slate-200 rounded-lg p-8 my-8 shadow-sm">
-        <h2 className="text-xl font-bold tracking-tight text-slate-800 mb-2">Create your account</h2>
+        <div className="flex items-center gap-3 mb-6">
+          <img src="/logo.png" alt="Carpooling" className="w-12 h-12 object-contain rounded-lg" />
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-slate-800">Carpooling</h1>
+            <p className="text-xs text-slate-400">Enterprise Mobility Platform</p>
+          </div>
+        </div>
+        <h2 className="text-lg font-bold tracking-tight text-slate-800 mb-1">Create your account</h2>
         <p className="text-xs text-slate-400 mb-6 font-medium">Use your company email domain to register</p>
 
         {error && (
@@ -304,7 +321,7 @@ function SignupView() {
 
 // ─── MAIN LAYOUT & HORIZONTAL HEADER ─────────────────────────────────
 function MainLayout() {
-  const { user, logout } = useAuthStore();
+  const { user, org, logout } = useAuthStore();
   const navigate = useNavigate();
 
   return (
@@ -314,7 +331,7 @@ function MainLayout() {
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-8">
             <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
-              <img src="/logo.svg" alt="Logo" className="w-8 h-8" />
+              <img src="/logo.png" alt="Carpooling" className="w-9 h-9 object-contain rounded-lg" />
               <span className="font-bold tracking-tight text-slate-800 text-lg">Carpooling</span>
             </div>
 
@@ -331,7 +348,7 @@ function MainLayout() {
 
           <div className="flex items-center gap-4">
             <div className="text-right">
-              <p className="text-xs font-semibold text-slate-700">Dero Addict</p>
+              <p className="text-xs font-semibold text-slate-700">{org?.name || 'My Organization'}</p>
               <p className="text-[10px] text-neutral-400 capitalize">{user?.name}</p>
             </div>
             
@@ -380,6 +397,57 @@ function HeaderLink({ to, label }) {
     </Link>
   );
 }
+
+const geocodeAddress = (address, isDestination = false) => {
+  if (!address) return isDestination ? { lat: 23.1974, lng: 72.6326 } : { lat: 23.0225, lng: 72.5714 };
+  const clean = address.toLowerCase().trim();
+  
+  // Gandhinagar Infocity
+  if (clean.includes('infocity')) {
+    return { lat: 23.1974, lng: 72.6326 };
+  }
+  // Ahmedabad ISKCON Circle
+  if (clean.includes('iskcon')) {
+    return { lat: 23.0225, lng: 72.5714 };
+  }
+  // Ahmedabad C G Road
+  if (clean.includes('c g road') || clean.includes('cg road')) {
+    return { lat: 23.0258, lng: 72.5594 };
+  }
+  // Gandhinagar Sector 21
+  if (clean.includes('sector 21')) {
+    return { lat: 23.2244, lng: 72.6489 };
+  }
+  // Gandhinagar GIFT City
+  if (clean.includes('gift city')) {
+    return { lat: 23.1594, lng: 72.6844 };
+  }
+  // Gandhinagar Sargasan
+  if (clean.includes('sargasan')) {
+    return { lat: 23.1947, lng: 72.6105 };
+  }
+  // Ahmedabad Vastrapur
+  if (clean.includes('vastrapur')) {
+    return { lat: 23.0379, lng: 72.5273 };
+  }
+  // Ahmedabad Prahlad Nagar
+  if (clean.includes('prahlad')) {
+    return { lat: 22.9982, lng: 72.5034 };
+  }
+  // Ahmedabad Chandkheda
+  if (clean.includes('chandkheda')) {
+    return { lat: 23.1118, lng: 72.5855 };
+  }
+
+  // Fallback: Generate deterministic coordinate shift based on string hash for custom addresses
+  const hash = address.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const baseLat = isDestination ? 23.1974 : 23.0225;
+  const baseLng = isDestination ? 72.6326 : 72.5714;
+  const offsetLat = ((hash % 100) / 1000) - 0.05;
+  const offsetLng = ((hash % 80) / 1000) - 0.04;
+  
+  return { lat: baseLat + offsetLat, lng: baseLng + offsetLng };
+};
 
 // ─── DASHBOARD: FIND & OFFER RIDE ────────────────────────────────────
 function DashboardView() {
@@ -444,9 +512,9 @@ function DashboardView() {
     try {
       await api.patch('/users/profile', { drivingLicense: dlNumber });
       await loadUser();
-      alert('Driving license updated successfully!');
+      toast.success('Driving license updated successfully!');
     } catch (err) {
-      alert('Failed to save driving license');
+      toast.error('Failed to save driving license');
     } finally {
       setDlSubmitting(false);
     }
@@ -457,33 +525,91 @@ function DashboardView() {
     setShowConfirmRoute(true);
     setTimeout(() => {
       if (!mapContainerRef.current || mapRef.current) return;
-      mapRef.current = new maptilersdk.Map({
-        container: mapContainerRef.current,
-        style: maptilersdk.MapStyle.STREETS,
-        center: [72.5714, 23.0225],
-        zoom: 12,
-      });
+      try {
+        const start = geocodeAddress(pickup, false);
+        const dest = geocodeAddress(destination, true);
+        const startLat = start.lat;
+        const startLng = start.lng;
+        const destLat = dest.lat;
+        const destLng = dest.lng;
+
+        mapRef.current = new maptilersdk.Map({
+          container: mapContainerRef.current,
+          style: maptilersdk.MapStyle.STREETS,
+          center: [startLng, startLat],
+          zoom: 11,
+        });
+
+        // Add Start marker (Green)
+        new maptilersdk.Marker({ color: "#22c55e" })
+          .setLngLat([startLng, startLat])
+          .addTo(mapRef.current);
+
+        // Add Destination marker (Coral Red)
+        new maptilersdk.Marker({ color: "#e85d4a" })
+          .setLngLat([destLng, destLat])
+          .addTo(mapRef.current);
+
+        mapRef.current.on('load', () => {
+          mapRef.current.addSource('route', {
+            type: 'geojson',
+            data: {
+              type: 'Feature',
+              properties: {},
+              geometry: {
+                type: 'LineString',
+                coordinates: [
+                  [startLng, startLat],
+                  [destLng, destLat]
+                ]
+              }
+            }
+          });
+          mapRef.current.addLayer({
+            id: 'route',
+            type: 'line',
+            source: 'route',
+            layout: {
+              'line-join': 'round',
+              'line-cap': 'round'
+            },
+            paint: {
+              'line-color': '#e85d4a',
+              'line-width': 4
+            }
+          });
+
+          const bounds = new maptilersdk.LngLatBounds();
+          bounds.extend([startLng, startLat]);
+          bounds.extend([destLng, destLat]);
+          mapRef.current.fitBounds(bounds, { padding: 40 });
+        });
+      } catch (err) {
+        console.error('Dashboard Map initialization error:', err);
+      }
     }, 100);
   };
 
   const handleConfirmPublish = async () => {
     setLoading(true);
     try {
+      const start = geocodeAddress(pickup, false);
+      const dest = geocodeAddress(destination, true);
       const dateTime = new Date(`${date}T08:00:00Z`).toISOString();
       await api.post('/rides', {
         vehicleId: selectedVehicle,
-        startLocation: { address: pickup, lat: 23.0225, lng: 72.5714 },
-        destination: { address: destination, lat: 23.1974, lng: 72.6326 },
+        startLocation: { address: pickup, lat: start.lat, lng: start.lng },
+        destination: { address: destination, lat: dest.lat, lng: dest.lng },
         dateTime,
         totalSeats: Number(seats),
         farePerSeat: Number(fareOffer),
       });
-      alert('Ride published successfully!');
+      toast.success('Ride published successfully!');
       setShowConfirmRoute(false);
       setPickup('');
       setDestination('');
     } catch (err) {
-      alert(err.response?.data?.message || 'Error publishing ride');
+      toast.error(err.response?.data?.message || 'Error publishing ride');
     } finally {
       setLoading(false);
     }
@@ -492,10 +618,10 @@ function DashboardView() {
   const handleBook = async (rideId) => {
     try {
       await api.post('/trips/book', { rideId, seatsBooked: 1 });
-      alert('Ride booked successfully! Manage it in "My Trips".');
+      toast.success('Ride booked! Check "My Trips" to manage it.');
       setRides(rides.filter(r => r._id !== rideId));
     } catch (err) {
-      alert(err.response?.data?.message || 'Booking failed');
+      toast.error(err.response?.data?.message || 'Booking failed');
     }
   };
 
@@ -524,7 +650,7 @@ function DashboardView() {
             <button onClick={() => setShowConfirmRoute(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
           </div>
 
-          <div ref={mapContainerRef} className="w-full h-80 bg-slate-100 rounded border border-slate-200 overflow-hidden"></div>
+          <div ref={mapContainerRef} className="w-full h-80 bg-slate-100 rounded border border-slate-200 relative overflow-hidden"></div>
 
           <div className="flex items-center justify-between">
             <div className="text-sm">
@@ -610,10 +736,24 @@ function DashboardView() {
                   <button
                     key={idx}
                     type="button"
-                    onClick={() => {
+                    onClick={async () => {
                       setPickup(route.from);
                       setDestination(route.to);
                       setDate('2026-07-31');
+                      setLoading(true);
+                      try {
+                        const res = await api.get(`/rides/search?seats=${seats}&date=2026-07-31`);
+                        setRides(res.data.data);
+                        if (res.data.data.length === 0) {
+                          setMsg('No available rides matching your criteria.');
+                        } else {
+                          setMsg('');
+                        }
+                      } catch (err) {
+                        setMsg('Error searching for rides.');
+                      } finally {
+                        setLoading(false);
+                      }
                     }}
                     className="text-[10px] bg-slate-100 hover:bg-[#e85d4a]/10 hover:text-[#e85d4a] text-slate-600 font-bold px-2 py-1.5 rounded transition-all"
                   >
@@ -777,6 +917,32 @@ function DashboardView() {
                 Confirm Route & Price
               </button>
             </form>
+
+            {/* Quick pre-fill recommendations for offering rides */}
+            <div className="mt-4 pt-4 border-t border-slate-100 space-y-2">
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Recommended Commutes</span>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { from: 'Ahmedabad (ISKCON Circle)', to: 'Gandhinagar (Infocity)', label: 'Ahmedabad ➔ Gandhinagar' },
+                  { from: 'Ahmedabad (C G Road)', to: 'Gandhinagar (Sector 21)', label: 'CG Road ➔ Sector 21' },
+                  { from: 'GIFT City, Gandhinagar', to: 'Sargasan, Gandhinagar', label: 'GIFT City ➔ Sargasan' }
+                ].map((route, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      setPickup(route.from);
+                      setDestination(route.to);
+                      setDate('2026-07-31');
+                      toast.success('Commute endpoints pre-filled! 🚗');
+                    }}
+                    className="text-[10px] bg-slate-100 hover:bg-[#e85d4a]/10 hover:text-[#e85d4a] text-slate-600 font-bold px-2 py-1.5 rounded transition-all"
+                  >
+                    {route.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         )
       )}
@@ -919,13 +1085,13 @@ function MyVehicleView() {
         fuelType,
         fuelEfficiency: Number(efficiency),
       });
-      alert('Vehicle submitted for Admin approval.');
+      toast.success('Vehicle submitted for Admin approval.');
       setModel('');
       setRegNum('');
       setShowAddForm(false);
       fetchVehicles();
     } catch (err) {
-      alert(err.response?.data?.message || 'Registration failed');
+      toast.error(err.response?.data?.message || 'Registration failed');
     }
   };
 
@@ -1048,10 +1214,11 @@ function MyVehicleView() {
 
 // ─── WALLET VIEW (Recharge Wallet style) ─────────────────────────────
 function WalletView() {
+  const { user } = useAuthStore();
   const [balance, setBalance] = useState(0);
   const [amount, setAmount] = useState('500');
-  const [method, setMethod] = useState('card');
   const [loading, setLoading] = useState(true);
+  const [paying, setPaying] = useState(false);
 
   useEffect(() => {
     fetchBalance();
@@ -1068,14 +1235,68 @@ function WalletView() {
     }
   };
 
+  // Dynamically load the Razorpay checkout script
+  const loadRazorpayScript = () =>
+    new Promise((resolve, reject) => {
+      if (window.Razorpay) return resolve();
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = resolve;
+      script.onerror = () => reject(new Error('Failed to load Razorpay'));
+      document.body.appendChild(script);
+    });
+
   const handleRecharge = async (e) => {
     e.preventDefault();
+    const amt = Number(amount);
+    if (!amt || amt < 1) {
+      toast.error('Please enter a valid amount');
+      return;
+    }
+    setPaying(true);
     try {
-      await api.post('/payments/generate-qr', { amount: Number(amount) });
-      alert(`Simulation: Wallet recharged with ₹${amount}!`);
-      fetchBalance();
+      // 1. Create order on backend
+      const orderRes = await api.post('/payments/order', { amount: amt, type: 'wallet_recharge' });
+      const order = orderRes.data.data;
+
+      // 2. Load Razorpay SDK
+      await loadRazorpayScript();
+
+      // 3. Open Razorpay checkout
+      const rzp = new window.Razorpay({
+        key: 'rzp_test_Sx8VfpZ6kmmU5H',
+        amount: order.amount,
+        currency: order.currency || 'INR',
+        name: 'Carpooling Platform',
+        description: 'Wallet Recharge',
+        order_id: order.id,
+        prefill: {
+          name: user?.name || '',
+          email: user?.email || '',
+          contact: user?.mobile || '',
+        },
+        theme: { color: '#e85d4a' },
+        modal: { ondismiss: () => { setPaying(false); toast('Payment cancelled', { icon: '🚫' }); } },
+        handler: async (response) => {
+          try {
+            await api.post('/payments/verify', {
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+            });
+            toast.success(`₹${amt} added to your wallet! 🎉`);
+            fetchBalance();
+          } catch (err) {
+            toast.error('Payment verification failed. Contact support.');
+          } finally {
+            setPaying(false);
+          }
+        },
+      });
+      rzp.open();
     } catch (err) {
-      alert('Recharge failed');
+      toast.error(err.response?.data?.message || 'Could not initiate payment');
+      setPaying(false);
     }
   };
 
@@ -1106,27 +1327,17 @@ function WalletView() {
             />
           </div>
 
-          <div className="space-y-3">
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input type="radio" checked={method === 'card'} onChange={() => setMethod('card')} className="text-[#e85d4a] focus:ring-[#e85d4a]" />
-              <span className="text-sm text-slate-600">Card Payment</span>
-            </label>
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input type="radio" checked={method === 'upi'} onChange={() => setMethod('upi')} className="text-[#e85d4a] focus:ring-[#e85d4a]" />
-              <span className="text-sm text-slate-600">UPI Payment</span>
-            </label>
+          <div className="p-3 bg-slate-50 border border-slate-100 rounded text-xs text-slate-500 space-y-1">
+            <p className="font-semibold text-slate-600">Razorpay Secure Checkout</p>
+            <p>Supports: UPI · Credit / Debit Card · Net Banking · Wallets</p>
           </div>
 
-          {method === 'upi' && (
-            <div className="border border-slate-100 p-4 rounded flex items-center justify-between bg-slate-50">
-              <input type="text" placeholder="upi_id@bank" className="bg-white border border-slate-200 text-xs px-3 py-2 rounded focus:outline-none w-40" />
-              <span className="text-xs text-slate-400 font-semibold cursor-pointer hover:text-slate-600">Scan</span>
-              <div className="w-12 h-12 bg-white border border-slate-200 flex items-center justify-center font-bold text-[10px] text-slate-600 font-mono">QR</div>
-            </div>
-          )}
-
-          <button type="submit" className="w-full bg-[#e85d4a] hover:bg-[#d94d3a] text-white py-3 rounded text-sm font-semibold transition-colors shadow-sm">
-            Add ₹{amount}
+          <button
+            type="submit"
+            disabled={paying}
+            className="w-full bg-[#e85d4a] hover:bg-[#d94d3a] disabled:opacity-50 text-white py-3 rounded text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-2"
+          >
+            {paying ? <><Loader className="w-4 h-4 animate-spin" /> Processing...</> : `Pay ₹${amount} via Razorpay`}
           </button>
         </form>
       </div>
@@ -1194,30 +1405,172 @@ function MyTripsView() {
 // ─── SETTINGS VIEW (Matches the settings links layout in wireframe) ──
 function SettingsView() {
   const navigate = useNavigate();
+  const { user, org, loadUser } = useAuthStore();
+  const [dlNumber, setDlNumber] = useState(user?.drivingLicense || '');
+  const [dlSubmitting, setDlSubmitting] = useState(false);
+
+  const handleDlSubmit = async (e) => {
+    e.preventDefault();
+    if (!dlNumber.trim()) return;
+    setDlSubmitting(true);
+    try {
+      await api.patch('/users/profile', { drivingLicense: dlNumber });
+      await loadUser();
+      toast.success('Driving license updated successfully!');
+    } catch (err) {
+      toast.error('Failed to save driving license');
+    } finally {
+      setDlSubmitting(false);
+    }
+  };
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-8 max-w-6xl mx-auto">
-      <div className="md:col-span-1 bg-white border border-slate-200 p-6 rounded-lg shadow-sm h-fit">
-        <h2 className="font-bold text-lg text-slate-800">Setting</h2>
-        <p className="text-xs text-slate-400 mt-1 font-medium">Quick links</p>
-      </div>
-
-      <div className="md:col-span-3 bg-white border border-slate-200 rounded-lg p-6 shadow-sm space-y-6">
-        <div className="flex items-center gap-2 border-b border-slate-200 pb-4">
-          <ChevronLeft className="w-5 h-5 text-[#e85d4a] cursor-pointer" />
-          <h3 className="font-bold text-slate-800 text-sm">My Trips</h3>
+      {/* Left Column: Quick Navigation Links */}
+      <div className="md:col-span-1 bg-white border border-slate-200 p-6 rounded-lg shadow-sm h-fit space-y-6">
+        <div>
+          <h2 className="font-bold text-lg text-slate-800">Settings</h2>
+          <p className="text-xs text-slate-400 mt-1 font-medium">Control panel & quick links</p>
         </div>
 
-        {/* Links list exactly matching wireframe screenshot */}
         <div className="divide-y divide-slate-100 border border-slate-100 rounded overflow-hidden">
           <SettingsLink label="My Trips" onClick={() => navigate('/trips')} />
           <SettingsLink label="My Vehicle" onClick={() => navigate('/vehicle')} />
           <SettingsLink label="Payment Method" onClick={() => navigate('/wallet')} />
           <SettingsLink label="Ride History" onClick={() => navigate('/history')} />
-          <SettingsLink label="Saved Places" onClick={() => alert('Feature coming soon!')} />
-          <SettingsLink label="Help" onClick={() => alert('Support contact: teamclickjack@gmail.com')} />
-          <SettingsLink label="Chat" onClick={() => navigate('/trips')} />
+          <SettingsLink label="Saved Places" onClick={() => toast('Feature coming soon! 🚧')} />
+          <SettingsLink label="Help" onClick={() => toast('Support: teamclickjack@gmail.com 📧')} />
         </div>
       </div>
+
+      {/* Right Column: User Profile & Corporate Details */}
+      <div className="md:col-span-3 bg-white border border-slate-200 rounded-lg p-6 shadow-sm space-y-8">
+        <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+          <div className="flex items-center gap-2">
+            <ChevronLeft className="w-5 h-5 text-[#e85d4a] cursor-pointer" onClick={() => navigate('/')} />
+            <h3 className="font-bold text-slate-800 text-sm">Profile & Details</h3>
+          </div>
+          <span className="text-xs font-semibold px-2.5 py-1 rounded bg-[#e85d4a]/10 text-[#e85d4a] uppercase">
+            {org?.name || 'Odoo Pvt Ltd'}
+          </span>
+        </div>
+
+        {/* Profile Header Block */}
+        <div className="flex flex-col sm:flex-row items-center gap-6 p-6 bg-slate-50 border border-slate-100 rounded-xl">
+          <div className="w-20 h-20 bg-[#e85d4a] rounded-full overflow-hidden border-2 border-white shadow-sm flex items-center justify-center text-2xl font-bold text-white uppercase">
+            {user?.profilePhoto ? (
+              <img src={user.profilePhoto} alt={user.name} className="w-full h-full object-cover" />
+            ) : (
+              user?.name?.slice(0, 2)
+            )}
+          </div>
+          <div className="text-center sm:text-left space-y-1.5 flex-1">
+            <h4 className="text-lg font-bold text-slate-800">{user?.name}</h4>
+            <div className="flex flex-wrap justify-center sm:justify-start items-center gap-3 text-xs text-slate-500">
+              <span className="bg-slate-200 px-2 py-0.5 rounded font-medium capitalize">{user?.role}</span>
+              <span>•</span>
+              <span className="font-medium">{user?.department || 'General'} Department</span>
+              <span>•</span>
+              <span className="flex items-center gap-1 text-amber-500 font-bold">
+                ★ {user?.trustScore?.toFixed(1) || '5.0'} Trust
+              </span>
+            </div>
+          </div>
+          <div className="bg-white px-4 py-3 rounded-lg border border-slate-100 text-center shadow-2xs min-w-32">
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Wallet Balance</p>
+            <p className="text-lg font-extrabold text-slate-800">₹{user?.walletBalance}</p>
+          </div>
+        </div>
+
+        {/* Corporate Details Grid */}
+        <div className="space-y-4">
+          <h5 className="text-xs font-bold uppercase tracking-wider text-slate-400">Corporate Coordinates</h5>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 border border-slate-100 rounded-xl p-6 bg-white">
+            <DetailItem label="Full Name" value={user?.name} />
+            <DetailItem label="Work Email" value={user?.email} />
+            <DetailItem label="Mobile Number" value={user?.mobile || 'Not provided'} />
+            <DetailItem label="Department" value={user?.department || 'Not provided'} />
+            <DetailItem label="Reporting Manager" value={user?.manager || 'Not assigned'} />
+            <DetailItem label="Office Seat / Desk" value={user?.officeLocation || 'Not assigned'} />
+          </div>
+        </div>
+
+        {/* ESG & Commute Stats */}
+        <div className="grid grid-cols-3 gap-4">
+          <StatCard label="CO2 Saved" value={`${user?.co2SavedKg?.toFixed(1) || '0.0'} kg`} subtitle="Net savings" />
+          <StatCard label="Rides Offered" value={user?.totalRidesOffered || 0} subtitle="As Driver" />
+          <StatCard label="Rides Taken" value={user?.totalRides || 0} subtitle="As Passenger" />
+        </div>
+
+        {/* Driving License Registration */}
+        <div className="border border-slate-200 rounded-xl p-6 space-y-4">
+          <div className="flex items-start gap-4">
+            <div className="p-2.5 bg-[#e85d4a]/10 rounded-lg text-[#e85d4a] shrink-0">
+              <Shield className="w-5 h-5" />
+            </div>
+            <div className="space-y-1">
+              <h5 className="font-bold text-sm text-slate-800">Driver verification</h5>
+              <p className="text-xs text-slate-400">
+                Register or update your driving license to offer and host carpool pools. This is required for safety and insurance.
+              </p>
+            </div>
+          </div>
+
+          {user?.drivingLicense ? (
+            <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl space-y-2">
+              <div className="flex items-center gap-2 text-emerald-700 font-bold text-xs">
+                <CheckCircle className="w-4 h-4 text-emerald-600" />
+                <span>Verified Driver Profile Active</span>
+              </div>
+              <p className="text-[11px] text-emerald-600 font-medium">
+                Registered Driving License: <b className="font-bold font-mono bg-emerald-100/50 px-1.5 py-0.5 rounded">{user.drivingLicense}</b>
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-50 border border-rose-100 rounded-full text-[10px] text-rose-600 font-bold">
+                ⚠ No driving license registered. You cannot offer rides.
+              </div>
+              <form onSubmit={handleDlSubmit} className="flex flex-col sm:flex-row gap-3 pt-2">
+                <input
+                  type="text"
+                  required
+                  placeholder="Enter Driving License (e.g. DL-IND-9992388)"
+                  value={dlNumber}
+                  onChange={(e) => setDlNumber(e.target.value)}
+                  className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-[#e85d4a] focus:bg-white flex-1 transition-all"
+                />
+                <button
+                  type="submit"
+                  disabled={dlSubmitting}
+                  className="bg-[#e85d4a] hover:bg-[#d94d3a] disabled:opacity-50 text-white text-xs font-semibold px-6 py-2.5 rounded-lg shadow-sm transition-all"
+                >
+                  {dlSubmitting ? 'Saving...' : 'Verify & Save'}
+                </button>
+              </form>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DetailItem({ label, value }) {
+  return (
+    <div className="space-y-1">
+      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{label}</p>
+      <p className="text-sm font-semibold text-slate-700">{value}</p>
+    </div>
+  );
+}
+
+function StatCard({ label, value, subtitle }) {
+  return (
+    <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 text-center">
+      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{label}</p>
+      <p className="text-lg font-extrabold text-slate-800 mt-1">{value}</p>
+      <p className="text-[9px] text-slate-400 mt-0.5">{subtitle}</p>
     </div>
   );
 }
@@ -1260,7 +1613,6 @@ function TripDetailView() {
     try {
       const res = await api.get(`/trips/${tripId}`);
       setTrip(res.data.data);
-      initializeMap();
     } catch (err) {
       console.error(err);
     } finally {
@@ -1268,29 +1620,89 @@ function TripDetailView() {
     }
   };
 
-  const initializeMap = () => {
-    setTimeout(() => {
+  useEffect(() => {
+    if (!trip) return;
+    const timer = setTimeout(() => {
       if (!mapContainerRef.current || mapRef.current) return;
       try {
+        const startLat = trip.rideId?.startLocation?.lat || 23.0225;
+        const startLng = trip.rideId?.startLocation?.lng || 72.5714;
+        const destLat = trip.rideId?.destination?.lat || 23.1974;
+        const destLng = trip.rideId?.destination?.lng || 72.6326;
+
         mapRef.current = new maptilersdk.Map({
           container: mapContainerRef.current,
           style: maptilersdk.MapStyle.STREETS,
-          center: [72.5714, 23.0225],
-          zoom: 12,
+          center: [startLng, startLat],
+          zoom: 11,
+        });
+
+        // Add Start marker (Green)
+        new maptilersdk.Marker({ color: "#22c55e" })
+          .setLngLat([startLng, startLat])
+          .setPopup(new maptilersdk.Popup().setHTML(`<b>Start:</b> ${trip.rideId?.startLocation?.address || 'Pickup Point'}`))
+          .addTo(mapRef.current);
+
+        // Add Destination marker (Coral Red)
+        new maptilersdk.Marker({ color: "#e85d4a" })
+          .setLngLat([destLng, destLat])
+          .setPopup(new maptilersdk.Popup().setHTML(`<b>Destination:</b> ${trip.rideId?.destination?.address || 'Destination'}`))
+          .addTo(mapRef.current);
+
+        mapRef.current.on('load', () => {
+          mapRef.current.addSource('route', {
+            type: 'geojson',
+            data: {
+              type: 'Feature',
+              properties: {},
+              geometry: {
+                type: 'LineString',
+                coordinates: [
+                  [startLng, startLat],
+                  [destLng, destLat]
+                ]
+              }
+            }
+          });
+          mapRef.current.addLayer({
+            id: 'route',
+            type: 'line',
+            source: 'route',
+            layout: {
+              'line-join': 'round',
+              'line-cap': 'round'
+            },
+            paint: {
+              'line-color': '#e85d4a',
+              'line-width': 4
+            }
+          });
+
+          const bounds = new maptilersdk.LngLatBounds();
+          bounds.extend([startLng, startLat]);
+          bounds.extend([destLng, destLat]);
+          mapRef.current.fitBounds(bounds, { padding: 50 });
         });
       } catch (err) {
-        console.error(err);
+        console.error('Trip Detail Map initialization error:', err);
       }
-    }, 100);
-  };
+    }, 200);
+    return () => {
+      clearTimeout(timer);
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+    };
+  }, [trip]);
 
   const handleUpdateStatus = async (status) => {
     try {
       await api.patch(`/trips/${tripId}/status`, { status });
-      alert('Trip status updated');
+      toast.success('Trip status updated');
       fetchTripDetails();
     } catch (err) {
-      alert('Failed to update status');
+      toast.error('Failed to update status');
     }
   };
 
@@ -1426,7 +1838,7 @@ Thank you for reducing corporate carbon footprint!
 
         {/* Map and Chat section */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div ref={mapContainerRef} className="md:col-span-2 h-72 bg-slate-100 rounded border border-slate-200 overflow-hidden"></div>
+          <div ref={mapContainerRef} className="md:col-span-2 h-72 bg-slate-100 rounded border border-slate-200 relative overflow-hidden"></div>
           
           <div className="border border-slate-200 rounded flex flex-col h-72">
             <div className="p-3 border-b border-slate-200 font-bold text-xs text-slate-700 bg-slate-50">Live Chat</div>

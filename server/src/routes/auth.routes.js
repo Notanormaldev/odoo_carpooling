@@ -13,6 +13,8 @@ router.post('/register', authLimiter, validate(registerSchema), authController.r
 router.post('/login', authLimiter, validate(loginSchema), authController.login);
 router.post('/verify-otp', authLimiter, authController.verifyOtp);
 router.post('/resend-otp', authLimiter, authController.resendOtp);
+router.post('/forgot-password', authLimiter, authController.forgotPassword);
+router.post('/reset-password', authLimiter, authController.resetPassword);
 router.post('/refresh', validate(refreshSchema), authController.refresh);
 router.post('/logout', protect, authController.logout);
 router.get('/me', protect, authController.getMe);

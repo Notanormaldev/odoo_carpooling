@@ -6,7 +6,7 @@ import Organization from '../models/Organization.model.js';
 export const getOrgReport = async (orgId, startDate, endDate) => {
   const matchQuery = {
     orgId: new mongoose.Types.ObjectId(orgId),
-    status: 'completed_paid',
+    status: { $in: ['completed', 'completed_paid', 'payment_pending'] },
   };
 
   if (startDate || endDate) {

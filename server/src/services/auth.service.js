@@ -214,4 +214,55 @@ export const resendOtp = async ({ email }) => {
   return { success: true, message: 'OTP resent successfully.' };
 };
 
-export default { registerUser, loginUser, refreshAccessToken, logoutUser, handleGoogleUser, verifyOtp, resendOtp };
+export const forgotPassword = async ({ email }) => {
+  const user = await User.findOne({ email });
+  if (!user) throw ApiError.notFound('No account found with this email address');
+
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  user.verificationOtp = otp;
+  user.verificationOtpExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 min
+  await user.save({ validateBeforeSave: false });
+
+  const org = await Organization.findById(user.orgId);
+  await sendEmail({
+    to: email,
+    subject: `Password Reset OTP - ${org?.name || 'Carpooling'}`,
+    htmlContent: `
+      <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 8px; max-width: 600px;">
+        <h2 style="color: #e85d4a;">Password Reset Request</h2>
+        <p>Hi <strong>${user.name}</strong>,</p>
+        <p>You requested to reset your password. Use the OTP below:</p>
+        <div style="background-color: #f9f9f9; padding: 15px; border-radius: 6px; font-size: 28px; font-weight: bold; text-align: center; color: #e85d4a; letter-spacing: 6px; margin: 20px 0;">
+          ${otp}
+        </div>
+        <p>This OTP is valid for <strong>15 minutes</strong>. Do not share it with anyone.</p>
+        <p>If you did not request a password reset, please ignore this email.</p>
+        <p style="font-size: 12px; color: #777; margin-top: 30px;">Odoo Carpooling Platform</p>
+      </div>
+    `,
+  });
+
+  return { success: true, message: 'Password reset OTP sent to your email.' };
+};
+
+export const resetPassword = async ({ email, otp, newPassword }) => {
+  const user = await User.findOne({ email }).select('+password');
+  if (!user) throw ApiError.notFound('No account found with this email address');
+
+  if (
+    !user.verificationOtp ||
+    user.verificationOtp !== otp ||
+    new Date() > user.verificationOtpExpires
+  ) {
+    throw ApiError.badRequest('Invalid or expired OTP. Please request a new one.');
+  }
+
+  user.password = newPassword; // pre-save hook will hash it
+  user.verificationOtp = undefined;
+  user.verificationOtpExpires = undefined;
+  await user.save();
+
+  return { success: true, message: 'Password reset successfully. Please log in with your new password.' };
+};
+
+export default { registerUser, loginUser, refreshAccessToken, logoutUser, handleGoogleUser, verifyOtp, resendOtp, forgotPassword, resetPassword };

@@ -548,22 +548,28 @@ export default function TripDetailView() {
 
         {/* Rating Review Modal */}
         {showRatingModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
-            <div className="bg-white border border-slate-100 rounded-xl p-6 max-w-sm w-full shadow-xl space-y-4">
-              <div className="text-center space-y-2">
-                <h4 className="font-bold text-slate-800 text-base">Rate Your Commute</h4>
-                <p className="text-xs text-slate-400">Help improve security and trust by rating driver <b>{trip.driverId?.name}</b></p>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+            <div className="bg-white border border-slate-100 rounded-2xl p-6 max-w-sm w-full shadow-2xl space-y-4">
+              <div className="text-center space-y-1">
+                <div className="text-3xl">⭐</div>
+                <h4 className="font-bold text-slate-800 text-base">How was your ride?</h4>
+                <p className="text-xs text-slate-400">Rate your commute with <b>{trip.driverId?.name}</b></p>
               </div>
 
-              <div className="flex items-center justify-center gap-1.5 py-2">
+              <div className="flex items-center justify-center gap-2 py-2">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <Star
                     key={star}
                     onClick={() => setRatingStars(star)}
-                    className={`w-8 h-8 cursor-pointer transition-colors duration-150 ${star <= ratingStars ? 'fill-amber-400 text-amber-400' : 'text-slate-200'}`}
+                    className={`w-9 h-9 cursor-pointer transition-all duration-150 hover:scale-110 ${
+                      star <= ratingStars ? 'fill-amber-400 text-amber-400 scale-110' : 'text-slate-200 hover:text-amber-300'
+                    }`}
                   />
                 ))}
               </div>
+              <p className="text-center text-xs font-semibold text-amber-500">
+                {ratingStars === 1 ? 'Poor' : ratingStars === 2 ? 'Fair' : ratingStars === 3 ? 'Good' : ratingStars === 4 ? 'Very Good' : 'Excellent!'}
+              </p>
 
               <div className="space-y-3">
                 <textarea
@@ -573,13 +579,18 @@ export default function TripDetailView() {
                   className="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs focus:outline-none focus:border-[#e85d4a] h-20 resize-none"
                   maxLength={300}
                 />
-                
                 <button
                   onClick={handleRatingSubmit}
                   disabled={submittingRating}
                   className="w-full bg-[#e85d4a] hover:bg-[#d94d3a] text-white py-2.5 rounded-lg text-xs font-semibold transition-colors shadow-sm cursor-pointer"
                 >
-                  {submittingRating ? 'Submitting...' : 'Submit Review'}
+                  {submittingRating ? 'Submitting...' : '⭐ Submit Review'}
+                </button>
+                <button
+                  onClick={() => setShowRatingModal(false)}
+                  className="w-full bg-slate-100 hover:bg-slate-200 text-slate-500 py-2 rounded-lg text-xs font-medium cursor-pointer transition-colors"
+                >
+                  Maybe Later
                 </button>
               </div>
             </div>

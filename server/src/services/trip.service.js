@@ -370,7 +370,7 @@ export const rateTrip = async (tripId, passengerId, { rating, comment }) => {
   const trip = await Trip.findOne({ _id: tripId, passengerId });
   if (!trip) throw ApiError.notFound('Trip not found or unauthorized');
 
-  if (!['completed', 'completed_paid'].includes(trip.status)) {
+  if (!['completed', 'completed_paid', 'payment_pending'].includes(trip.status)) {
     throw ApiError.badRequest('Cannot rate an incomplete trip');
   }
 

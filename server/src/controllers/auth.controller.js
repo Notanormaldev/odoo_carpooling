@@ -116,4 +116,19 @@ export const resendOtp = asyncHandler(async (req, res) => {
   return res.status(200).json(new ApiResponse(200, null, result.message));
 });
 
-export default { register, login, refresh, logout, googleCallback, getMe, verifyOtp, resendOtp };
+export const forgotPassword = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  if (!email) throw ApiError.badRequest('Email is required');
+  const result = await authService.forgotPassword({ email });
+  return res.status(200).json(new ApiResponse(200, null, result.message));
+});
+
+export const resetPassword = asyncHandler(async (req, res) => {
+  const { email, otp, newPassword } = req.body;
+  if (!email || !otp || !newPassword) throw ApiError.badRequest('Email, OTP and new password are required');
+  if (newPassword.length < 8) throw ApiError.badRequest('Password must be at least 8 characters');
+  const result = await authService.resetPassword({ email, otp, newPassword });
+  return res.status(200).json(new ApiResponse(200, null, result.message));
+});
+
+export default { register, login, refresh, logout, googleCallback, getMe, verifyOtp, resendOtp, forgotPassword, resetPassword };

@@ -13,13 +13,8 @@ const COOKIE_OPTIONS = {
 
 export const register = asyncHandler(async (req, res) => {
   const result = await authService.registerUser(req.body);
-  res.cookie('refreshToken', result.refreshToken, COOKIE_OPTIONS);
   return res.status(201).json(
-    new ApiResponse(201, {
-      user: result.user,
-      accessToken: result.accessToken,
-      orgName: result.orgName,
-    }, 'Account created successfully')
+    new ApiResponse(201, { email: result.email }, result.message)
   );
 });
 

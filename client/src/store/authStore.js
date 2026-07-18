@@ -37,23 +37,50 @@ export const useAuthStore = create((set, get) => ({
       const { user, accessToken, org } = res.data.data;
       localStorage.setItem('accessToken', accessToken);
       set({ user, org, isAuthenticated: true, error: null });
-      return true;
+      return { success: true };
     } catch (err) {
+      const errors = err.response?.data?.errors;
+      const isUnverified = Array.isArray(errors) && errors.some(e => e.unverified);
+      if (isUnverified) {
+        return { success: false, unverified: true, email };
+      }
       set({ error: err.response?.data?.message || 'Login failed' });
-      return false;
+      return { success: false };
     }
   },
 
   register: async (name, email, password, mobile, department, officeLocation) => {
     set({ error: null });
     try {
-      const res = await api.post('/auth/register', { name, email, password, mobile, department, officeLocation });
-      const { user, accessToken } = res.data.data;
-      localStorage.setItem('accessToken', accessToken);
-      set({ user, isAuthenticated: true, error: null });
+      await api.post('/auth/register', { name, email, password, mobile, department, officeLocation });
       return true;
     } catch (err) {
       set({ error: err.response?.data?.message || 'Registration failed' });
+      return false;
+    }
+  },
+
+  verifyOtp: async (email, otp) => {
+    set({ error: null });
+    try {
+      const res = await api.post('/auth/verify-otp', { email, otp });
+      const { user, accessToken, org } = res.data.data;
+      localStorage.setItem('accessToken', accessToken);
+      set({ user, org, isAuthenticated: true, error: null });
+      return true;
+    } catch (err) {
+      set({ error: err.response?.data?.message || 'Verification failed' });
+      return false;
+    }
+  },
+
+  resendOtp: async (email) => {
+    set({ error: null });
+    try {
+      await api.post('/auth/resend-otp', { email });
+      return true;
+    } catch (err) {
+      set({ error: err.response?.data?.message || 'Failed to resend OTP' });
       return false;
     }
   },

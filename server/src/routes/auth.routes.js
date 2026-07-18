@@ -11,6 +11,8 @@ const router = express.Router();
 // ─── Local Auth ────────────────────────────────────────────────────
 router.post('/register', authLimiter, validate(registerSchema), authController.register);
 router.post('/login', authLimiter, validate(loginSchema), authController.login);
+router.post('/verify-otp', authLimiter, authController.verifyOtp);
+router.post('/resend-otp', authLimiter, authController.resendOtp);
 router.post('/refresh', validate(refreshSchema), authController.refresh);
 router.post('/logout', protect, authController.logout);
 router.get('/me', protect, authController.getMe);

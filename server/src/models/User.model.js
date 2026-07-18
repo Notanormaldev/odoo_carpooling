@@ -50,6 +50,7 @@ const userSchema = new mongoose.Schema(
     manager: { type: String, trim: true },
     officeLocation: { type: String, trim: true },
     profilePhoto: { type: String, default: '' },
+    drivingLicense: { type: String, default: '' },
     walletBalance: {
       type: Number,
       default: 0,

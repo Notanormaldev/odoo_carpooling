@@ -30,6 +30,7 @@ export default function SettingsView() {
   const navigate = useNavigate();
   const { user, org, loadUser, logout, setIsChatbotOpen } = useAuthStore();
   const [dlNumber, setDlNumber] = useState(user?.drivingLicense || '');
+  const [dlFile, setDlFile] = useState(null);
   const [dlSubmitting, setDlSubmitting] = useState(false);
   const [subView, setSubView] = useState('profile'); // 'profile' or 'approvals'
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -39,11 +40,22 @@ export default function SettingsView() {
     if (!dlNumber.trim()) return;
     setDlSubmitting(true);
     try {
-      await api.patch('/users/profile', { drivingLicense: dlNumber });
+      const formData = new FormData();
+      formData.append('drivingLicense', dlNumber);
+      if (dlFile) {
+        formData.append('drivingLicensePhoto', dlFile);
+      }
+      
+      await api.patch('/users/profile', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
       await loadUser();
-      toast.success('Driving license updated successfully! Awaiting Admin verification.');
+      toast.success('Driving license uploaded! AI is analyzing your document.');
+      setDlFile(null);
     } catch (err) {
-      toast.error('Failed to save driving license');
+      toast.error(err.response?.data?.message || 'Failed to save driving license');
     } finally {
       setDlSubmitting(false);
     }
@@ -179,21 +191,34 @@ export default function SettingsView() {
                       ⚠ No driving license registered. You cannot offer rides.
                     </div>
                   )}
-                  <form onSubmit={handleDlSubmit} className="flex flex-col sm:flex-row gap-3 pt-2">
-                    <input
-                      type="text"
-                      required
-                      placeholder="Enter Driving License (e.g. DL-IND-9992388)"
-                      value={dlNumber}
-                      onChange={(e) => setDlNumber(e.target.value)}
-                      className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-[#e85d4a] focus:bg-white flex-1 transition-all"
-                    />
+                  <form onSubmit={handleDlSubmit} className="space-y-3 pt-2">
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <input
+                        type="text"
+                        required
+                        placeholder="Enter Driving License (e.g. DL-IND-9992388)"
+                        value={dlNumber}
+                        onChange={(e) => setDlNumber(e.target.value)}
+                        className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-[#e85d4a] focus:bg-white flex-1 transition-all"
+                      />
+                      <div className="relative flex-1 bg-slate-50 border border-slate-200 border-dashed rounded-lg px-4 py-2 text-xs flex items-center justify-between hover:bg-slate-100 transition-all duration-200">
+                        <span className="text-slate-500 font-semibold truncate">
+                          {dlFile ? dlFile.name : 'Upload License Photo (Image)'}
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => setDlFile(e.target.files[0])}
+                          className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                        />
+                      </div>
+                    </div>
                     <button
                       type="submit"
                       disabled={dlSubmitting}
-                      className="bg-[#e85d4a] hover:bg-[#d94d3a] disabled:opacity-50 text-white text-xs font-semibold px-6 py-2.5 rounded-lg shadow-sm transition-all"
+                      className="w-full bg-[#e85d4a] hover:bg-[#d94d3a] disabled:opacity-50 text-white text-xs font-semibold py-2.5 rounded-lg shadow-sm transition-all cursor-pointer"
                     >
-                      {dlSubmitting ? 'Saving...' : 'Verify & Save'}
+                      {dlSubmitting ? 'Uploading & AI Verifying...' : 'Submit to AI & Verify'}
                     </button>
                   </form>
                 </>

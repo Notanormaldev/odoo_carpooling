@@ -28,7 +28,19 @@ export default function LoginView() {
     }
   };
 
-
+  const handleQuickLogin = async (roleEmail, rolePassword) => {
+    setLoading(true);
+    setEmail(roleEmail);
+    setPassword(rolePassword);
+    const result = await login(roleEmail, rolePassword);
+    setLoading(false);
+    if (result.success) {
+      navigate('/');
+    } else if (result.unverified) {
+      toast.success('Please verify your email to continue.');
+      navigate(`/verify-otp?email=${encodeURIComponent(result.email)}`);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
@@ -78,27 +90,30 @@ export default function LoginView() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-[#e85d4a] hover:bg-[#d94d3a] disabled:opacity-50 text-white font-medium py-3 rounded text-sm transition-colors mt-6 shadow-sm"
+            className="w-full bg-[#e85d4a] hover:bg-[#d94d3a] disabled:opacity-50 text-white font-medium py-3 rounded text-sm transition-colors mt-6 shadow-sm cursor-pointer"
           >
             {loading ? 'Logging in...' : 'Log In'}
           </button>
 
-
-<div className='flex gap-10'>
-
-
-          <button className='bg-blue-100 px-3 py-1 'onClick={async(e)=>{
-setLoading(true) 
-setEmail('rajpatel@gmail.com'),
-setPassword('Password123!')
-setLoading(false)
-          }}>Admin</button>
-
-          <button>Employee</button>
-</div>
-
- 
-
+          <div className="mt-6 pt-4 border-t border-slate-100 space-y-3">
+            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block text-center">Quick Demo Login</span>
+            <div className="flex gap-4">
+              <button
+                type="button"
+                onClick={() => handleQuickLogin('rajpatel@gmail.com', 'Password123!')}
+                className="flex-1 py-2 px-3 bg-slate-50 border border-slate-200 hover:border-[#e85d4a]/50 hover:bg-[#e85d4a]/5 text-slate-700 hover:text-[#e85d4a] rounded-lg text-xs font-bold transition-all cursor-pointer text-center"
+              >
+                👑 Admin (Raj)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickLogin('sujalpanchal25072005@gmail.com', 'Password123!')}
+                className="flex-1 py-2 px-3 bg-slate-50 border border-slate-200 hover:border-[#e85d4a]/50 hover:bg-[#e85d4a]/5 text-slate-700 hover:text-[#e85d4a] rounded-lg text-xs font-bold transition-all cursor-pointer text-center"
+              >
+                🚗 Employee (Sujal)
+              </button>
+            </div>
+          </div>
         </form>
 
         <div className="relative my-8">

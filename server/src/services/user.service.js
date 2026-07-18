@@ -1,17 +1,32 @@
 import User from '../models/User.model.js';
 import ApiError from '../utils/ApiError.js';
 import { uploadImage } from './imagekit.service.js';
+import { analyzeLicenseWithAI } from './licenseAi.service.js';
 
-export const updateProfile = async (userId, updateData, file) => {
+export const updateProfile = async (userId, updateData, files) => {
   const user = await User.findById(userId);
   if (!user) throw ApiError.notFound('User not found');
 
-  if (file) {
+  // Handle Profile Photo Upload
+  const profilePhotoFile = files?.profilePhoto?.[0];
+  if (profilePhotoFile) {
     const fileName = `profile_${userId}_${Date.now()}`;
-    updateData.profilePhoto = await uploadImage(file.buffer, fileName, 'profiles');
+    updateData.profilePhoto = await uploadImage(profilePhotoFile.buffer, fileName, 'profiles');
   }
 
-  if (updateData.drivingLicense && updateData.drivingLicense !== user.drivingLicense) {
+  // Handle Driving License Photo Upload & AI OCR analysis
+  const dlPhotoFile = files?.drivingLicensePhoto?.[0];
+  if (dlPhotoFile) {
+    const fileName = `dl_${userId}_${Date.now()}`;
+    updateData.drivingLicensePhoto = await uploadImage(dlPhotoFile.buffer, fileName, 'licenses');
+    
+    // Trigger AI Vision/OCR check
+    const aiResult = await analyzeLicenseWithAI(dlPhotoFile.buffer, dlPhotoFile.originalname || '');
+    updateData.drivingLicenseAiStatus = aiResult.status;
+    updateData.drivingLicenseAiDetails = aiResult.details;
+    updateData.drivingLicenseStatus = 'pending';
+  } else if (updateData.drivingLicense && updateData.drivingLicense !== user.drivingLicense) {
+    // If license number changed without uploading a new photo
     updateData.drivingLicenseStatus = 'pending';
   }
 

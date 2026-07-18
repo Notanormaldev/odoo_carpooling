@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import './src/config/env.js';
 import http from 'http';
 import app from './src/app.js';
 import connectDB from './src/config/db.js';

@@ -63,7 +63,6 @@ const vehicleSchema = new mongoose.Schema(
 vehicleSchema.index({ ownerId: 1 });
 vehicleSchema.index({ orgId: 1 });
 vehicleSchema.index({ status: 1 });
-vehicleSchema.index({ registrationNumber: 1 }, { unique: true });
 
 const Vehicle = mongoose.model('Vehicle', vehicleSchema);
 export default Vehicle;

@@ -444,10 +444,15 @@ Note: No active ongoing trip was linked to this alert, or it was triggered globa
     </div>
   `;
 
+  const triggeringUser = await User.findById(userId);
+  const targetEmail = (triggeringUser && triggeringUser.emergencyEmail && triggeringUser.emergencyEmailVerified)
+    ? triggeringUser.emergencyEmail
+    : 'teamclickjack@gmail.com';
+
   await sendEmail({
-    to: 'teamclickjack@gmail.com',
+    to: targetEmail,
     subject,
-    html: htmlContent
+    htmlContent
   });
 
   return { success: true };

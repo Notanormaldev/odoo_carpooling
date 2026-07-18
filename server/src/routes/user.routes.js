@@ -28,6 +28,10 @@ router.delete('/saved-places/:id', userController.deleteSavedPlace);
 router.post('/emergency-contacts', validate(addEmergencyContactSchema), userController.addEmergencyContact);
 router.delete('/emergency-contacts/:id', userController.deleteEmergencyContact);
 
+// Emergency Email verification
+router.post('/emergency-email', userController.setEmergencyEmail);
+router.post('/verify-emergency-email', userController.verifyEmergencyEmail);
+
 // Admin driving license approval
 router.get('/pending-licenses', requireAdmin, userController.getPendingLicenses);
 router.post('/verify-license', requireAdmin, userController.verifyLicense);

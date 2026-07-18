@@ -47,7 +47,10 @@ const userSchema = new mongoose.Schema(
       default: 'employee',
     },
     department: { type: String, trim: true },
-    manager: { type: String, trim: true },
+    emergencyEmail: { type: String, lowercase: true, trim: true },
+    emergencyEmailVerified: { type: Boolean, default: false },
+    emergencyEmailOtp: { type: String },
+    emergencyEmailOtpExpires: { type: Date },
     officeLocation: { type: String, trim: true },
     profilePhoto: {
       type: String,

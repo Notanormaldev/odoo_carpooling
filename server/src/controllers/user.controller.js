@@ -63,6 +63,16 @@ export const verifyLicense = asyncHandler(async (req, res) => {
   return res.status(200).json(new ApiResponse(200, user, `Driving license status updated to ${status}`));
 });
 
+export const setEmergencyEmail = asyncHandler(async (req, res) => {
+  const result = await userService.setEmergencyEmail(req.user._id, req.body);
+  return res.status(200).json(new ApiResponse(200, result, 'Verification OTP sent to emergency email'));
+});
+
+export const verifyEmergencyEmail = asyncHandler(async (req, res) => {
+  const result = await userService.verifyEmergencyEmail(req.user._id, req.body);
+  return res.status(200).json(new ApiResponse(200, result, 'Emergency email verified successfully'));
+});
+
 export default {
   updateProfile,
   addSavedPlace,
@@ -72,4 +82,6 @@ export default {
   deleteEmergencyContact,
   getPendingLicenses,
   verifyLicense,
+  setEmergencyEmail,
+  verifyEmergencyEmail,
 };

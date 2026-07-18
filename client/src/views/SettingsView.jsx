@@ -35,6 +35,48 @@ export default function SettingsView() {
   const [subView, setSubView] = useState('profile'); // 'profile' or 'approvals'
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
+  const [emergencyEmail, setEmergencyEmail] = useState(user?.emergencyEmail || '');
+  const [showOtpInput, setShowOtpInput] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+
+  const handleSendEmergencyEmailOtp = async () => {
+    if (!emergencyEmail.trim()) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+    setSendingOtp(true);
+    try {
+      await api.post('/users/emergency-email', { emergencyEmail });
+      toast.success('Verification OTP sent to emergency email!');
+      setShowOtpInput(true);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to send verification OTP');
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
+  const handleVerifyEmergencyEmailOtp = async () => {
+    if (!otpCode.trim()) {
+      toast.error('Please enter the OTP');
+      return;
+    }
+    setVerifyingOtp(true);
+    try {
+      await api.post('/users/verify-emergency-email', { otp: otpCode });
+      toast.success('Emergency contact email verified successfully!');
+      setShowOtpInput(false);
+      setOtpCode('');
+      await loadUser(); // refresh user store
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Verification failed. Try again.');
+    } finally {
+      setVerifyingOtp(false);
+    }
+  };
+
   const handleDlSubmit = async (e) => {
     e.preventDefault();
     if (!dlNumber.trim()) return;
@@ -136,7 +178,18 @@ export default function SettingsView() {
                 <DetailItem label="Work Email" value={user?.email} />
                 <DetailItem label="Mobile Number" value={user?.mobile || 'Not provided'} />
                 <DetailItem label="Department" value={user?.department || 'Not provided'} />
-                <DetailItem label="Reporting Manager" value={user?.manager || 'Not assigned'} />
+                <DetailItem label="Emergency SOS Email" value={
+                  user?.emergencyEmail ? (
+                    <span className="flex items-center gap-1.5">
+                      {user.emergencyEmail} 
+                      {user.emergencyEmailVerified ? (
+                        <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold">✓ Verified</span>
+                      ) : (
+                        <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-bold">⚠ Unverified</span>
+                      )}
+                    </span>
+                  ) : 'Not set'
+                } />
                 <DetailItem label="Office Seat / Desk" value={user?.officeLocation || 'Not assigned'} />
               </div>
             </div>
@@ -145,6 +198,77 @@ export default function SettingsView() {
             <div className="grid grid-cols-2 gap-4">
               <StatCard label="Rides Offered" value={user?.totalRidesOffered || 0} subtitle="As Driver" />
               <StatCard label="Rides Taken" value={user?.totalRides || 0} subtitle="As Passenger" />
+            </div>
+
+            {/* SOS Email Helper Setup */}
+            <div className="border border-slate-200 rounded-xl p-6 space-y-4">
+              <div className="flex items-start gap-4">
+                <div className="p-2.5 bg-red-50 rounded-lg text-red-600 shrink-0">
+                  <Shield className="w-5 h-5 animate-pulse" />
+                </div>
+                <div className="space-y-1">
+                  <h5 className="font-bold text-sm text-slate-800">SOS Helper Email Setup</h5>
+                  <p className="text-xs text-slate-400">
+                    Register a trusted helper's email (family, coworker, security desk). Whenever you trigger the SOS panic alert, an automated emergency dispatch email will be routed to them.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-3 pt-2">
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    placeholder="helper@company.com"
+                    value={emergencyEmail}
+                    onChange={(e) => setEmergencyEmail(e.target.value)}
+                    disabled={showOtpInput}
+                    className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-[#e85d4a] focus:bg-white flex-1 transition-all"
+                  />
+                  {!showOtpInput && (
+                    <button
+                      type="button"
+                      onClick={handleSendEmergencyEmailOtp}
+                      disabled={sendingOtp || !emergencyEmail || (emergencyEmail === user?.emergencyEmail && user?.emergencyEmailVerified)}
+                      className="bg-[#e85d4a] hover:bg-[#d94d3a] disabled:opacity-50 text-white text-xs font-semibold px-4 py-2.5 rounded-lg shadow-sm transition-all cursor-pointer whitespace-nowrap"
+                    >
+                      {sendingOtp ? 'Sending...' : user?.emergencyEmail === emergencyEmail && user?.emergencyEmailVerified ? 'Verified' : 'Send Verification OTP'}
+                    </button>
+                  )}
+                </div>
+
+                {showOtpInput && (
+                  <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 space-y-3">
+                    <p className="text-[11px] text-slate-500 font-semibold">
+                      Enter the 6-digit OTP code sent to <b>{emergencyEmail}</b>:
+                    </p>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        maxLength={6}
+                        placeholder="123456"
+                        value={otpCode}
+                        onChange={(e) => setOtpCode(e.target.value)}
+                        className="bg-white border border-slate-200 rounded-lg px-4 py-2 text-xs text-slate-800 tracking-widest text-center font-bold focus:outline-none focus:border-[#e85d4a] flex-1 max-w-[120px]"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleVerifyEmergencyEmailOtp}
+                        disabled={verifyingOtp || otpCode.length < 6}
+                        className="bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors cursor-pointer"
+                      >
+                        {verifyingOtp ? 'Verifying...' : 'Verify OTP'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setShowOtpInput(false); setOtpCode(''); }}
+                        className="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold px-3 py-2 rounded-lg transition-colors cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Driving License Registration */}

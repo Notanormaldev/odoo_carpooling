@@ -394,13 +394,27 @@ export default function DashboardView() {
       <div className="flex border-b border-slate-200"
       >
         <button
-          onClick={() => { setActiveTab('find'); handleCloseConfirmRoute(); }}
+          onClick={() => {
+            setActiveTab('find');
+            handleCloseConfirmRoute();
+            setPickup('');
+            setDestination('');
+            setPickupCoords(null);
+            setDestCoords(null);
+          }}
           className={`pb-4 px-6 font-bold text-sm border-b-2 transition-all cursor-pointer ${activeTab === 'find' ? 'border-[#e85d4a] text-[#e85d4a]' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
         >
           Find Ride
         </button>
         <button
-          onClick={() => { setActiveTab('offer'); handleCloseConfirmRoute(); }}
+          onClick={() => {
+            setActiveTab('offer');
+            handleCloseConfirmRoute();
+            setPickup('');
+            setDestination('');
+            setPickupCoords(null);
+            setDestCoords(null);
+          }}
           className={`pb-4 px-6 font-bold text-sm border-b-2 transition-all cursor-pointer ${activeTab === 'offer' ? 'border-[#e85d4a] text-[#e85d4a]' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
         >
           Offer Ride

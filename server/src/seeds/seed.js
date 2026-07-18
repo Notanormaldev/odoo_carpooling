@@ -1,4 +1,6 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
+import path from 'path';
+dotenv.config({ path: path.resolve(process.cwd(), '../.env') });
 import mongoose from 'mongoose';
 import connectDB from '../config/db.js';
 import Organization from '../models/Organization.model.js';

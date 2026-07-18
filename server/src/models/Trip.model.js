@@ -85,7 +85,6 @@ tripSchema.index({ passengerId: 1, status: 1 });
 tripSchema.index({ driverId: 1, status: 1 });
 tripSchema.index({ rideId: 1 });
 tripSchema.index({ orgId: 1 });
-tripSchema.index({ verificationQR: 1 }, { unique: true });
 
 // Aggregation pipeline: monthly trip stats for reports
 tripSchema.statics.getMonthlyStats = function (orgId) {

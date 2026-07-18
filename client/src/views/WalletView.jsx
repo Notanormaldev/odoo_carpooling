@@ -55,6 +55,11 @@ export default function WalletView() {
           email: user?.email || '',
           contact: user?.mobile || '',
         },
+        readonly: {
+          contact: true,
+          email: true,
+          name: true,
+        },
         theme: {
           color: '#e85d4a',
         },

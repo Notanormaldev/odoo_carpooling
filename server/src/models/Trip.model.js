@@ -65,7 +65,6 @@ const tripSchema = new mongoose.Schema(
 
     // ESG data
     distanceKm: { type: Number, default: 0 },
-    co2SavedKg: { type: Number, default: 0 },
     fuelSavedLitres: { type: Number, default: 0 },
 
     // Rating
@@ -98,7 +97,6 @@ tripSchema.statics.getMonthlyStats = function (orgId) {
         },
         revenue: { $sum: '$fare' },
         totalTrips: { $sum: 1 },
-        totalCO2Saved: { $sum: '$co2SavedKg' },
         totalDistance: { $sum: '$distanceKm' },
       },
     },
@@ -110,7 +108,6 @@ tripSchema.statics.getMonthlyStats = function (orgId) {
         month: '$_id.month',
         revenue: 1,
         totalTrips: 1,
-        totalCO2Saved: 1,
         totalDistance: 1,
       },
     },

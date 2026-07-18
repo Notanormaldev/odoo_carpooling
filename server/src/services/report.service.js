@@ -23,7 +23,6 @@ export const getOrgReport = async (orgId, startDate, endDate) => {
         _id: null,
         totalRevenue: { $sum: '$fare' },
         totalFuelSaved: { $sum: '$fuelSavedLitres' },
-        totalCO2Saved: { $sum: '$co2SavedKg' },
         totalDistance: { $sum: '$distanceKm' },
         totalTrips: { $sum: 1 },
       },
@@ -35,7 +34,6 @@ export const getOrgReport = async (orgId, startDate, endDate) => {
 
   const totalRevenue = stats[0]?.totalRevenue || 0;
   const totalFuelSaved = stats[0]?.totalFuelSaved || 0;
-  const totalCO2Saved = stats[0]?.totalCO2Saved || 0;
   const totalDistance = stats[0]?.totalDistance || 0;
   const totalTrips = stats[0]?.totalTrips || 0;
 
@@ -156,7 +154,6 @@ export const getOrgReport = async (orgId, startDate, endDate) => {
     metrics: {
       totalRevenue,
       totalFuelSaved,
-      totalCO2Saved,
       totalDistance,
       totalTrips,
       totalFuelCostSavedAmount,

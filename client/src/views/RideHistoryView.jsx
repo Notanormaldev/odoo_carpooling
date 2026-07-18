@@ -34,10 +34,7 @@ Vehicle: Swift Dzire (GJ01AB1234)
 Route: ${trip.rideId?.startLocation?.address} to ${trip.rideId?.destination?.address}
 Seats: ${trip.seatsBooked}
 Fare Charged: ₹${trip.fare}
-CO2 Savings: 3.0 kg
 Payment Status: PAID & SETTLED
-===========================================
-Thank you for reducing corporate carbon footprint!
 ===========================================`;
 
     const blob = new Blob([content], { type: 'text/plain' });

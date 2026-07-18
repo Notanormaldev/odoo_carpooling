@@ -4,7 +4,7 @@ import Ride from '../models/Ride.model.js';
 import User from '../models/User.model.js';
 import Vehicle from '../models/Vehicle.model.js';
 import ApiError from '../utils/ApiError.js';
-import { calculateCO2Saved, calculateFuelSaved } from '../utils/co2Calculator.js';
+import { calculateFuelSaved } from '../utils/co2Calculator.js';
 import { getRedisClient } from '../config/redis.js';
 import WalletTransaction from '../models/WalletTransaction.model.js';
 import Payment from '../models/Payment.model.js';
@@ -171,12 +171,8 @@ export const updateTripStatus = async (tripId, userId, role, { status, cancellat
 
     trip.distanceKm = distance;
 
-    // Calculate ESG metric (CO2 savings)
-    const totalRiders = (ride?.passengers?.length || 0) + 1; // passengers + driver
-    const co2 = calculateCO2Saved(distance, totalRiders);
-    trip.co2SavedKg = co2.savedKg;
-
     if (vehicle) {
+      const totalRiders = (ride?.passengers?.length || 0) + 1; // passengers + driver
       const fuel = calculateFuelSaved(distance, vehicle.fuelEfficiency || 15, totalRiders);
       trip.fuelSavedLitres = fuel.savedLitres;
     }
@@ -268,7 +264,7 @@ export const updateTripStatus = async (tripId, userId, role, { status, cancellat
 
     // Increment employee ride statistics
     await User.findByIdAndUpdate(trip.passengerId, {
-      $inc: { totalRides: 1, co2SavedKg: trip.co2SavedKg },
+      $inc: { totalRides: 1 },
     });
     await User.findByIdAndUpdate(trip.driverId, {
       $inc: { totalRidesOffered: 1 },

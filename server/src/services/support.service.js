@@ -18,7 +18,7 @@ export const getAIResponse = async (userMessage) => {
       new SystemMessage(
         'You are the AI Support Assistant for the Enterprise Carpooling Platform. ' +
         'Help users with questions about carpooling policies, how to offer or book rides, ' +
-        'how the wallet payments work, and how ESG CO2 savings are calculated (e.g. 120g CO2 saved per km per passenger). ' +
+        'and how the wallet payments work. ' +
         'The platform supports the following pages for navigation: ' +
         '- Dashboard: "/" (to search and book rides or offer rides) ' +
         '- My Trips: "/trips" (to view active and booked trips) ' +

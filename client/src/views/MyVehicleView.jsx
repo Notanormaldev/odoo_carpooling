@@ -9,8 +9,6 @@ export default function MyVehicleView() {
   const [model, setModel] = useState('');
   const [regNum, setRegNum] = useState('');
   const [capacity, setCapacity] = useState(4);
-  const [fuelType, setFuelType] = useState('petrol');
-  const [efficiency, setEfficiency] = useState(15);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const navigate = useNavigate();
@@ -37,8 +35,6 @@ export default function MyVehicleView() {
         model,
         registrationNumber: regNum,
         seatingCapacity: Number(capacity),
-        fuelType,
-        fuelEfficiency: Number(efficiency),
       });
       toast.success('Vehicle submitted for Admin approval.');
       setModel('');
@@ -99,32 +95,17 @@ export default function MyVehicleView() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs text-slate-400 mb-2 font-medium">Seating Capacity</label>
-                <input
-                  type="number"
-                  min="2"
-                  max="8"
-                  required
-                  value={capacity}
-                  onChange={(e) => setCapacity(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-2.5 text-sm focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-slate-400 mb-2 font-medium">Fuel Type</label>
-                <select
-                  value={fuelType}
-                  onChange={(e) => setFuelType(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-2.5 text-sm focus:outline-none"
-                >
-                  <option value="petrol">Petrol</option>
-                  <option value="diesel">Diesel</option>
-                  <option value="cng">CNG</option>
-                  <option value="electric">Electric</option>
-                </select>
-              </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-2 font-medium">Seating Capacity</label>
+              <input
+                type="number"
+                min="2"
+                max="8"
+                required
+                value={capacity}
+                onChange={(e) => setCapacity(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-2.5 text-sm focus:outline-none focus:border-[#e85d4a]"
+              />
             </div>
 
             <button type="submit" className="w-full bg-[#e85d4a] hover:bg-[#d94d3a] text-white py-2.5 rounded text-sm font-semibold transition-colors shadow-sm cursor-pointer">

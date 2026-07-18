@@ -68,7 +68,6 @@ const userSchema = new mongoose.Schema(
       max: 5,
     },
     totalRatings: { type: Number, default: 0 },
-    co2SavedKg: { type: Number, default: 0 },
     totalRides: { type: Number, default: 0 },
     totalRidesOffered: { type: Number, default: 0 },
     isActive: { type: Boolean, default: true },
@@ -121,12 +120,11 @@ userSchema.statics.getLeaderboard = function (orgId, limit = 10) {
         profilePhoto: 1,
         totalRides: 1,
         totalRidesOffered: 1,
-        co2SavedKg: 1,
         trustScore: 1,
         totalTrips: { $add: ['$totalRides', '$totalRidesOffered'] },
       },
     },
-    { $sort: { co2SavedKg: -1, totalTrips: -1 } },
+    { $sort: { totalTrips: -1 } },
     { $limit: limit },
   ]);
 };

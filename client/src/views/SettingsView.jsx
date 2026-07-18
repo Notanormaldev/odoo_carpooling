@@ -128,9 +128,8 @@ export default function SettingsView() {
               </div>
             </div>
 
-            {/* ESG & Commute Stats */}
-            <div className="grid grid-cols-3 gap-4">
-              <StatCard label="CO2 Saved" value={`${user?.co2SavedKg?.toFixed(1) || '0.0'} kg`} subtitle="Net savings" />
+            {/* Commute Stats */}
+            <div className="grid grid-cols-2 gap-4">
               <StatCard label="Rides Offered" value={user?.totalRidesOffered || 0} subtitle="As Driver" />
               <StatCard label="Rides Taken" value={user?.totalRides || 0} subtitle="As Passenger" />
             </div>

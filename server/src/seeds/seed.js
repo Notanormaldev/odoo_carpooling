@@ -474,7 +474,6 @@ const seedDatabase = async () => {
       fare: 80,
       status: 'completed_paid',
       distanceKm: 8,
-      co2SavedKg: 0.96,
       fuelSavedLitres: 0.53,
       bookedAt: pastDate1,
       startedAt: pastDate1,
@@ -510,7 +509,6 @@ const seedDatabase = async () => {
       fare: 120,
       status: 'completed_paid',
       distanceKm: 25,
-      co2SavedKg: 3.0,
       fuelSavedLitres: 1.66,
       bookedAt: pastDate2,
       startedAt: pastDate2,
@@ -546,7 +544,6 @@ const seedDatabase = async () => {
       fare: 150,
       status: 'completed_paid',
       distanceKm: 22,
-      co2SavedKg: 2.64,
       fuelSavedLitres: 1.46,
       bookedAt: pastDate3,
       startedAt: pastDate3,
@@ -563,7 +560,6 @@ const seedDatabase = async () => {
       fare: 150,
       status: 'completed_paid',
       distanceKm: 22,
-      co2SavedKg: 2.64,
       fuelSavedLitres: 1.46,
       bookedAt: pastDate3,
       startedAt: pastDate3,
@@ -662,20 +658,16 @@ const seedDatabase = async () => {
 
     // Update user stats
     priya.totalRides = 1;
-    priya.co2SavedKg = 0.96;
     await priya.save();
 
     raj.totalRides = 1;
     raj.totalRidesOffered = 1;
-    raj.co2SavedKg = 3.0;
     await raj.save();
 
     sneha.totalRides = 1;
-    sneha.co2SavedKg = 2.64;
     await sneha.save();
 
     divya.totalRides = 1;
-    divya.co2SavedKg = 2.64;
     await divya.save();
 
     amit.totalRidesOffered = 2;

@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { BrowserRouter, Routes, Route, Link, useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { 
   Car, Shield, Wallet, BarChart3, Clock, Settings, LogOut, Search, MapPin, Calendar, 
-  User, CheckCircle, AlertTriangle, MessageSquare, Send, Phone, RefreshCw, Plus, X, Menu, Loader, ChevronLeft, CreditCard
+  User, CheckCircle, AlertTriangle, MessageSquare, Send, Phone, RefreshCw, Plus, X, Menu, Loader, ChevronLeft, CreditCard, Download
 } from 'lucide-react';
 import * as maptilersdk from '@maptiler/sdk';
 import useAuthStore from './store/authStore';
@@ -308,13 +308,13 @@ function MainLayout() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans">
+    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans relative">
       {/* Horizontal Header Bar (Exactly like wireframes) */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-8">
             <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
-              <Car className="w-6 h-6 text-[#e85d4a]" />
+              <img src="/logo.svg" alt="Logo" className="w-8 h-8" />
               <span className="font-bold tracking-tight text-slate-800 text-lg">Carpooling</span>
             </div>
 
@@ -351,7 +351,7 @@ function MainLayout() {
       </header>
 
       {/* Main View Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto p-6 pb-24">
         <Routes>
           <Route path="/" element={<DashboardView />} />
           <Route path="/trips" element={<MyTripsView />} />
@@ -363,6 +363,9 @@ function MainLayout() {
           <Route path="/settings" element={<SettingsView />} />
         </Routes>
       </main>
+
+      {/* LangChain Mistral AI Support Widget */}
+      <SupportChatWidget />
     </div>
   );
 }
@@ -380,6 +383,7 @@ function HeaderLink({ to, label }) {
 
 // ─── DASHBOARD: FIND & OFFER RIDE ────────────────────────────────────
 function DashboardView() {
+  const { user, loadUser } = useAuthStore();
   const [activeTab, setActiveTab] = useState('find'); // find or offer
   const [pickup, setPickup] = useState('');
   const [destination, setDestination] = useState('');
@@ -394,6 +398,10 @@ function DashboardView() {
   const [showConfirmRoute, setShowConfirmRoute] = useState(false);
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
+
+  // DL one-time submit state
+  const [dlNumber, setDlNumber] = useState('');
+  const [dlSubmitting, setDlSubmitting] = useState(false);
 
   useEffect(() => {
     fetchMyVehicles();
@@ -412,7 +420,7 @@ function DashboardView() {
   };
 
   const handleSearch = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     setLoading(true);
     try {
       const res = await api.get(`/rides/search?seats=${seats}&date=${date}`);
@@ -426,6 +434,21 @@ function DashboardView() {
       setMsg('Error searching for rides.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDlSubmit = async (e) => {
+    e.preventDefault();
+    if (!dlNumber.trim()) return;
+    setDlSubmitting(true);
+    try {
+      await api.patch('/users/profile', { drivingLicense: dlNumber });
+      await loadUser();
+      alert('Driving license updated successfully!');
+    } catch (err) {
+      alert('Failed to save driving license');
+    } finally {
+      setDlSubmitting(false);
     }
   };
 
@@ -574,6 +597,31 @@ function DashboardView() {
                 Find Ride
               </button>
             </form>
+
+            {/* Recommended cities search suggestions */}
+            <div className="mt-4 pt-4 border-t border-slate-100 space-y-2">
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Recommended Commutes</span>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { from: 'Ahmedabad (ISKCON Circle)', to: 'Gandhinagar (Infocity)', label: 'Ahmedabad ➔ Gandhinagar' },
+                  { from: 'Ahmedabad (C G Road)', to: 'Gandhinagar (Sector 21)', label: 'CG Road ➔ Sector 21' },
+                  { from: 'GIFT City, Gandhinagar', to: 'Sargasan, Gandhinagar', label: 'GIFT City ➔ Sargasan' }
+                ].map((route, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      setPickup(route.from);
+                      setDestination(route.to);
+                      setDate('2026-07-31');
+                    }}
+                    className="text-[10px] bg-slate-100 hover:bg-[#e85d4a]/10 hover:text-[#e85d4a] text-slate-600 font-bold px-2 py-1.5 rounded transition-all"
+                  >
+                    {route.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           <div className="md:col-span-2 space-y-4">
@@ -581,7 +629,7 @@ function DashboardView() {
             {rides.length === 0 ? (
               <div className="bg-white border border-slate-200 rounded-lg p-12 text-center text-slate-400 shadow-sm">
                 <Search className="w-8 h-8 mx-auto mb-3 text-slate-300" />
-                <p className="text-sm">Submit search filters to find matching employee ride pools.</p>
+                <p className="text-sm">Submit search filters or click a popular route commute to view employee pools.</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -613,87 +661,124 @@ function DashboardView() {
           </div>
         </div>
       ) : (
-        <div className="bg-white border border-slate-200 p-8 rounded-lg max-w-xl mx-auto shadow-sm space-y-6">
-          <h3 className="font-bold text-slate-800 text-sm">Offer Ride Details</h3>
-          <form onSubmit={handlePublishClick} className="space-y-4">
-            <div>
-              <label className="block text-xs text-slate-400 mb-2 font-medium">Select Vehicle</label>
-              <select
-                value={selectedVehicle}
-                onChange={(e) => setSelectedVehicle(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-3 text-sm focus:outline-none focus:border-[#e85d4a]"
-              >
-                {vehicles.map(v => (
-                  <option key={v._id} value={v._id}>{v.model} - {v.registrationNumber}</option>
-                ))}
-              </select>
+        /* Offer Ride: Check for Driving License first (One-Time Verification) */
+        !user?.drivingLicense ? (
+          <div className="bg-white border border-slate-200 p-8 rounded-lg max-w-md mx-auto shadow-sm space-y-6">
+            <div className="text-center space-y-2">
+              <Shield className="w-10 h-10 text-[#e85d4a] mx-auto" />
+              <h3 className="font-bold text-slate-800 text-base">Driving License Verification</h3>
+              <p className="text-xs text-slate-400 font-medium">To offer and publish ride pools, register your driving license details for enterprise security.</p>
             </div>
-
-            <div>
-              <label className="block text-xs text-slate-400 mb-2 font-medium">Pickup Point</label>
-              <input
-                type="text"
-                required
-                placeholder="Start Location"
-                value={pickup}
-                onChange={(e) => setPickup(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-3 text-sm focus:outline-none focus:border-[#e85d4a]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs text-slate-400 mb-2 font-medium">Destination Point</label>
-              <input
-                type="text"
-                required
-                placeholder="Drop point"
-                value={destination}
-                onChange={(e) => setDestination(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-3 text-sm focus:outline-none focus:border-[#e85d4a]"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
+            
+            <form onSubmit={handleDlSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs text-slate-400 mb-2 font-medium">Date</label>
+                <label className="block text-xs uppercase tracking-wider text-slate-500 mb-2">Driving License Number</label>
                 <input
-                  type="date"
+                  type="text"
                   required
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-3 text-sm focus:outline-none"
+                  placeholder="e.g. DL-IND-9992388"
+                  value={dlNumber}
+                  onChange={(e) => setDlNumber(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-3 text-sm focus:outline-none focus:border-[#e85d4a] focus:bg-white"
                 />
               </div>
+
+              <button 
+                type="submit" 
+                disabled={dlSubmitting}
+                className="w-full bg-[#e85d4a] hover:bg-[#d94d3a] text-white py-3 rounded text-sm font-semibold transition-colors shadow-sm"
+              >
+                {dlSubmitting ? 'Registering...' : 'Register Driving License'}
+              </button>
+            </form>
+          </div>
+        ) : (
+          <div className="bg-white border border-slate-200 p-8 rounded-lg max-w-xl mx-auto shadow-sm space-y-6">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-bold text-slate-800 text-sm">Offer Ride Details</h3>
+              <span className="text-[10px] text-slate-400 font-bold uppercase bg-slate-50 px-2 py-1 rounded">Verified Driver: {user.drivingLicense}</span>
+            </div>
+            
+            <form onSubmit={handlePublishClick} className="space-y-4">
               <div>
-                <label className="block text-xs text-slate-400 mb-2 font-medium">Seats</label>
+                <label className="block text-xs text-slate-400 mb-2 font-medium">Select Vehicle</label>
+                <select
+                  value={selectedVehicle}
+                  onChange={(e) => setSelectedVehicle(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-3 text-sm focus:outline-none focus:border-[#e85d4a]"
+                >
+                  {vehicles.map(v => (
+                    <option key={v._id} value={v._id}>{v.model} - {v.registrationNumber}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs text-slate-400 mb-2 font-medium">Pickup Point</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Start Location"
+                  value={pickup}
+                  onChange={(e) => setPickup(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-3 text-sm focus:outline-none focus:border-[#e85d4a]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-slate-400 mb-2 font-medium">Destination Point</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Drop point"
+                  value={destination}
+                  onChange={(e) => setDestination(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-3 text-sm focus:outline-none focus:border-[#e85d4a]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs text-slate-400 mb-2 font-medium">Date</label>
+                  <input
+                    type="date"
+                    required
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-3 text-sm focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-2 font-medium">Seats</label>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={seats}
+                    onChange={(e) => setSeats(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-3 text-sm focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs text-slate-400 mb-2 font-medium">Price / Seat (₹)</label>
                 <input
                   type="number"
-                  min="1"
+                  min="10"
                   required
-                  value={seats}
-                  onChange={(e) => setSeats(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-3 text-sm focus:outline-none"
+                  value={fareOffer}
+                  onChange={(e) => setFareOffer(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-3 text-sm focus:outline-none focus:border-[#e85d4a]"
                 />
               </div>
-            </div>
 
-            <div>
-              <label className="block text-xs text-slate-400 mb-2 font-medium">Price / Seat (₹)</label>
-              <input
-                type="number"
-                min="10"
-                required
-                value={fareOffer}
-                onChange={(e) => setFareOffer(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-3 text-sm focus:outline-none focus:border-[#e85d4a]"
-              />
-            </div>
-
-            <button type="submit" className="w-full bg-[#e85d4a] hover:bg-[#d94d3a] text-white py-3 rounded text-sm font-semibold transition-colors shadow-sm">
-              Confirm Route & Price
-            </button>
-          </form>
-        </div>
+              <button type="submit" className="w-full bg-[#e85d4a] hover:bg-[#d94d3a] text-white py-3 rounded text-sm font-semibold transition-colors shadow-sm">
+                Confirm Route & Price
+              </button>
+            </form>
+          </div>
+        )
       )}
     </div>
   );
@@ -717,6 +802,30 @@ function RideHistoryView() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDownloadInvoice = (trip) => {
+    const content = `===========================================
+          COMMUTE RIDE INVOICE          
+===========================================
+Trip ID: ${trip._id}
+Date: ${new Date(trip.completedAt || trip.createdAt).toLocaleString()}
+Driver: ${trip.driverId?.name}
+Vehicle: Swift Dzire (GJ01AB1234)
+Route: ${trip.rideId?.startLocation?.address} to ${trip.rideId?.destination?.address}
+Seats: ${trip.seatsBooked}
+Fare Charged: ₹${trip.fare}
+CO2 Savings: 3.0 kg
+Payment Status: PAID & SETTLED
+===========================================
+Thank you for reducing corporate carbon footprint!
+===========================================`;
+
+    const blob = new Blob([content], { type: 'text/plain' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `invoice_${trip._id.slice(-6)}.txt`;
+    link.click();
   };
 
   return (
@@ -752,9 +861,18 @@ function RideHistoryView() {
                   </div>
                 </div>
 
-                <div className="text-right text-xs text-slate-500">
-                  <p className="font-semibold text-slate-800">GJ01AB1234</p>
-                  <p>{tx.completedAt ? new Date(tx.completedAt).toLocaleString() : ''}</p>
+                <div className="flex items-center gap-4 text-right text-xs text-slate-500">
+                  <div>
+                    <p className="font-semibold text-slate-800">GJ01AB1234</p>
+                    <p>{tx.completedAt ? new Date(tx.completedAt).toLocaleString() : ''}</p>
+                  </div>
+                  <button 
+                    onClick={() => handleDownloadInvoice(tx)}
+                    className="p-2 text-slate-400 hover:text-[#e85d4a] rounded"
+                    title="Download Receipt"
+                  >
+                    <Download className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             ))}
@@ -1176,6 +1294,30 @@ function TripDetailView() {
     }
   };
 
+  const handleDownloadInvoice = () => {
+    const content = `===========================================
+          COMMUTE RIDE INVOICE          
+===========================================
+Trip ID: ${trip._id}
+Date: ${new Date(trip.createdAt).toLocaleString()}
+Driver: ${trip.driverId?.name}
+Vehicle: Swift Dzire (GJ01AB1234)
+Route: ${trip.rideId?.startLocation?.address} to ${trip.rideId?.destination?.address}
+Seats: ${trip.seatsBooked}
+Fare Charged: ₹${trip.fare}
+CO2 Savings: 0.96 kg
+Payment Status: PAID & SETTLED
+===========================================
+Thank you for reducing corporate carbon footprint!
+===========================================`;
+
+    const blob = new Blob([content], { type: 'text/plain' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `invoice_${trip._id.slice(-6)}.txt`;
+    link.click();
+  };
+
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (!typedMessage.trim()) return;
@@ -1208,6 +1350,13 @@ function TripDetailView() {
           </div>
 
           <div className="flex gap-2">
+            <button 
+              onClick={handleDownloadInvoice}
+              className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-4 py-2 rounded flex items-center gap-2"
+            >
+              <Download className="w-3.5 h-3.5" /> Invoice
+            </button>
+
             {!isDriver && trip.status === 'booked' && (
               <button onClick={() => setShowQR(true)} className="bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold px-4 py-2 rounded">
                 Show QR
@@ -1300,15 +1449,6 @@ function TripDetailView() {
   );
 }
 
-// ─── PORTAL ADMIN VIEW ──────────────────────────────────────────────
-function AdminPortalView() {
-  return (
-    <div className="p-8 text-center text-slate-500">
-      Admin portal details. Change access permissions or approve registrations in Dashboard / Vehicles.
-    </div>
-  );
-}
-
 // ─── REPORTS VIEW (Exactly like wireframe) ───────────────────────────
 function ReportsView() {
   const [report, setReport] = useState(null);
@@ -1329,6 +1469,18 @@ function ReportsView() {
     }
   };
 
+  const handleDownloadReportCSV = () => {
+    const csvContent = `Month,Revenue,Fuel Cost,Maintenance,Net Profit
+July 2026,Rs. 1.2L,Rs. 6L,Rs. 2L,Rs. 4L
+August 2026,Rs. 1.5L,Rs. 5.8L,Rs. 1.8L,Rs. 4.5L`;
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'carpooling_financial_report.csv';
+    link.click();
+  };
+
   if (loading) {
     return <div className="flex items-center justify-center h-96"><Loader className="w-6 h-6 animate-spin text-[#e85d4a]" /></div>;
   }
@@ -1341,9 +1493,17 @@ function ReportsView() {
       </div>
 
       <div className="md:col-span-3 bg-white border border-slate-200 rounded-lg p-6 shadow-sm space-y-8">
-        <div className="flex items-center gap-2 border-b border-slate-200 pb-4">
-          <ChevronLeft className="w-5 h-5 text-[#e85d4a] cursor-pointer" />
-          <h3 className="font-bold text-slate-800 text-sm">Report</h3>
+        <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+          <div className="flex items-center gap-2">
+            <ChevronLeft className="w-5 h-5 text-[#e85d4a] cursor-pointer" />
+            <h3 className="font-bold text-slate-800 text-sm">Report</h3>
+          </div>
+          <button 
+            onClick={handleDownloadReportCSV}
+            className="bg-[#e85d4a] hover:bg-[#d94d3a] text-white text-xs font-semibold px-4 py-2 rounded flex items-center gap-2 shadow-sm transition-all"
+          >
+            <Download className="w-3.5 h-3.5" /> Download CSV Report
+          </button>
         </div>
 
         {/* Analytics Pills exactly like wireframe drawing */}
@@ -1369,7 +1529,7 @@ function ReportsView() {
               <div className="bg-slate-300 w-8 h-16 rounded-t"></div>
               <div className="bg-slate-300 w-8 h-24 rounded-t"></div>
             </div>
-            <div className="flex justify-between text-[10px] text-slate-400">
+            <div className="flex justify-between text-[10px] text-slate-400 font-bold">
               <span>Jan</span>
               <span>Jun</span>
               <span>Sep</span>
@@ -1418,6 +1578,94 @@ function ReportsView() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── FLOATING SUPPORT CHAT WIDGET (LangChain Mistral) ─────────────────
+function SupportChatWidget() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [messages, setMessages] = useState([
+    { sender: 'ai', text: 'Hi! Ask me anything about carpooling policies, routes, or wallet payments.' }
+  ]);
+  const [inputText, setInputText] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSend = async (e) => {
+    e.preventDefault();
+    if (!inputText.trim() || loading) return;
+
+    const userText = inputText;
+    setInputText('');
+    setMessages(prev => [...prev, { sender: 'user', text: userText }]);
+    setLoading(true);
+
+    try {
+      const res = await api.post('/support/chat', { message: userText });
+      setMessages(prev => [...prev, { sender: 'ai', text: res.data.data.response }]);
+    } catch (err) {
+      setMessages(prev => [...prev, { sender: 'ai', text: 'Sorry, I encountered an error connecting to LangChain support.' }]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed bottom-6 right-6 z-50">
+      {/* Floating Toggle Button */}
+      <button 
+        onClick={() => setIsOpen(!isOpen)}
+        className="bg-[#e85d4a] hover:bg-[#d94d3a] text-white rounded-full p-4 shadow-lg cursor-pointer flex items-center justify-center transition-all"
+      >
+        {isOpen ? <X className="w-6 h-6" /> : <MessageSquare className="w-6 h-6" />}
+      </button>
+
+      {/* Chat Window */}
+      {isOpen && (
+        <div className="absolute bottom-16 right-0 w-80 h-96 bg-white border border-slate-200 rounded-lg shadow-xl flex flex-col overflow-hidden transition-all animate-in slide-in-from-bottom-4">
+          <div className="bg-slate-50 p-4 border-b border-slate-200 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse"></div>
+              <span className="font-bold text-xs text-slate-700">AI Support Copilot</span>
+            </div>
+            <button onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+          </div>
+
+          {/* Messages list */}
+          <div className="flex-1 p-4 overflow-y-auto space-y-3 text-xs">
+            {messages.map((m, i) => (
+              <div key={i} className={`flex ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div className={`p-3 rounded-lg max-w-[80%] ${
+                  m.sender === 'user' ? 'bg-[#e85d4a] text-white rounded-br-none' : 'bg-slate-100 text-slate-800 rounded-bl-none'
+                }`}>
+                  {m.text}
+                </div>
+              </div>
+            ))}
+            {loading && (
+              <div className="flex justify-start">
+                <div className="bg-slate-100 text-slate-400 p-3 rounded-lg flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></span>
+                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:0.2s]"></span>
+                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:0.4s]"></span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Input form */}
+          <form onSubmit={handleSend} className="p-3 border-t border-slate-200 flex gap-2 bg-slate-50">
+            <input 
+              type="text" 
+              placeholder="Ask a question..." 
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              className="bg-white border border-slate-200 px-3 py-2 text-xs rounded focus:outline-none flex-1 focus:border-[#e85d4a]"
+            />
+            <button type="submit" className="bg-[#e85d4a] text-white p-2 rounded hover:bg-[#d94d3a]"><Send className="w-4 h-4" /></button>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

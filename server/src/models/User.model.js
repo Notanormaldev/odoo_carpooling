@@ -51,6 +51,11 @@ const userSchema = new mongoose.Schema(
     officeLocation: { type: String, trim: true },
     profilePhoto: { type: String, default: '' },
     drivingLicense: { type: String, default: '' },
+    drivingLicenseStatus: {
+      type: String,
+      enum: ['none', 'pending', 'approved', 'rejected'],
+      default: 'none',
+    },
     walletBalance: {
       type: Number,
       default: 0,

@@ -11,6 +11,10 @@ export const updateProfile = async (userId, updateData, file) => {
     updateData.profilePhoto = await uploadImage(file.buffer, fileName, 'profiles');
   }
 
+  if (updateData.drivingLicense && updateData.drivingLicense !== user.drivingLicense) {
+    updateData.drivingLicenseStatus = 'pending';
+  }
+
   Object.assign(user, updateData);
   await user.save();
   return user;

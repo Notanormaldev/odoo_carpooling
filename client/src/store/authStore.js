@@ -7,6 +7,8 @@ export const useAuthStore = create((set, get) => ({
   isAuthenticated: false,
   loading: true,
   error: null,
+  isChatbotOpen: false,
+  setIsChatbotOpen: (open) => set({ isChatbotOpen: open }),
 
   loadUser: async () => {
     const token = localStorage.getItem('accessToken');

@@ -1,6 +1,6 @@
 import express from 'express';
 import * as userController from '../controllers/user.controller.js';
-import { protect } from '../middlewares/auth.middleware.js';
+import { protect, requireAdmin } from '../middlewares/auth.middleware.js';
 import { upload } from '../middlewares/upload.js';
 import validate from '../middlewares/validate.js';
 import { updateProfileSchema, addSavedPlaceSchema, addEmergencyContactSchema } from '../validators/user.validator.js';
@@ -19,5 +19,9 @@ router.delete('/saved-places/:id', userController.deleteSavedPlace);
 // Emergency Contacts
 router.post('/emergency-contacts', validate(addEmergencyContactSchema), userController.addEmergencyContact);
 router.delete('/emergency-contacts/:id', userController.deleteEmergencyContact);
+
+// Admin driving license approval
+router.get('/pending-licenses', requireAdmin, userController.getPendingLicenses);
+router.post('/verify-license', requireAdmin, userController.verifyLicense);
 
 export default router;

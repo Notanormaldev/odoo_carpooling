@@ -42,6 +42,7 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LoginView />} />
           <Route path="/signup" element={<SignupView />} />
+          <Route path="/verify-otp" element={<VerifyOtpView />} />
           <Route path="/auth/google/success" element={<GoogleSuccessHandler />} />
           <Route path="/*" element={<ProtectedRoute><MainLayout /></ProtectedRoute>} />
         </Routes>
@@ -101,9 +102,14 @@ function LoginView() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    const success = await login(email, password);
+    const result = await login(email, password);
     setLoading(false);
-    if (success) navigate('/');
+    if (result.success) {
+      navigate('/');
+    } else if (result.unverified) {
+      toast.success('Please verify your email to continue.');
+      navigate(`/verify-otp?email=${encodeURIComponent(result.email)}`);
+    }
   };
 
   return (
@@ -175,7 +181,7 @@ function LoginView() {
             <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22-.03-.63z" />
             <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
           </svg>
-          Google Work Account
+          Continue with Google
         </a>
 
         <p className="text-center text-xs text-slate-500 mt-8">
@@ -207,7 +213,10 @@ function SignupView() {
     setLoading(true);
     const success = await register(name, email, password, mobile, dept, office);
     setLoading(false);
-    if (success) navigate('/');
+    if (success) {
+      toast.success('Registration successful! OTP sent to your email.');
+      navigate(`/verify-otp?email=${encodeURIComponent(email)}`);
+    }
   };
 
   return (
@@ -318,7 +327,115 @@ function SignupView() {
     </div>
   );
 }
+// ─── OTP VERIFICATION VIEW ──────────────────────────────────────────
+function VerifyOtpView() {
+  const [searchParams] = useSearchParams();
+  const emailParam = searchParams.get('email') || '';
+  const navigate = useNavigate();
+  const { verifyOtp, resendOtp, error, clearError } = useAuthStore();
+  
+  const [email, setEmail] = useState(emailParam);
+  const [otp, setOtp] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
 
+  useEffect(() => {
+    clearError();
+  }, []);
+
+  const handleVerify = async (e) => {
+    e.preventDefault();
+    if (otp.length !== 6) {
+      toast.error('Please enter a 6-digit OTP');
+      return;
+    }
+    setLoading(true);
+    const success = await verifyOtp(email, otp);
+    setLoading(false);
+    if (success) {
+      toast.success('Email verified successfully! Welcome.');
+      navigate('/');
+    }
+  };
+
+  const handleResend = async () => {
+    setResending(true);
+    const success = await resendOtp(email);
+    setResending(false);
+    if (success) {
+      toast.success('New OTP sent to your email.');
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-white border border-slate-200 rounded-lg p-8 my-8 shadow-sm">
+        <div className="flex items-center gap-3 mb-6">
+          <img src="/logo.png" alt="Carpooling" className="w-12 h-12 object-contain rounded-lg" />
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-slate-800">Verify Email</h1>
+            <p className="text-xs text-slate-400">Enter OTP sent to your mailbox</p>
+          </div>
+        </div>
+
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded text-sm text-[#e85d4a] flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleVerify} className="space-y-4">
+          <div>
+            <label className="block text-xs uppercase tracking-wider text-slate-500 mb-2">Registered Email</label>
+            <input
+              type="email"
+              required
+              disabled={!!emailParam}
+              placeholder="name@co.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-3 text-sm text-slate-800 focus:outline-none focus:border-[#e85d4a] focus:bg-white transition-all disabled:opacity-75"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs uppercase tracking-wider text-slate-500 mb-2">6-Digit OTP</label>
+            <input
+              type="text"
+              required
+              maxLength={6}
+              placeholder="e.g. 123456"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+              className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-3 text-sm font-semibold tracking-widest text-center text-slate-800 focus:outline-none focus:border-[#e85d4a] focus:bg-white transition-all"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-[#e85d4a] hover:bg-[#d94d3a] disabled:opacity-50 text-white font-medium py-3 rounded text-sm transition-colors mt-6 shadow-sm cursor-pointer"
+          >
+            {loading ? 'Verifying...' : 'Verify OTP'}
+          </button>
+        </form>
+
+        <div className="flex justify-between items-center text-xs mt-6 pt-4 border-t border-slate-100">
+          <button 
+            type="button" 
+            onClick={handleResend}
+            disabled={resending}
+            className="text-[#e85d4a] hover:underline font-bold disabled:opacity-50 cursor-pointer"
+          >
+            {resending ? 'Resending...' : 'Resend Verification Code'}
+          </button>
+          <Link to="/login" className="text-slate-400 hover:underline font-medium">Back to Login</Link>
+        </div>
+      </div>
+    </div>
+  );
+}
 // ─── MAIN LAYOUT & HORIZONTAL HEADER ─────────────────────────────────
 function MainLayout() {
   const { user, org, logout } = useAuthStore();
@@ -1405,9 +1522,10 @@ function MyTripsView() {
 // ─── SETTINGS VIEW (Matches the settings links layout in wireframe) ──
 function SettingsView() {
   const navigate = useNavigate();
-  const { user, org, loadUser } = useAuthStore();
+  const { user, org, loadUser, logout, setIsChatbotOpen } = useAuthStore();
   const [dlNumber, setDlNumber] = useState(user?.drivingLicense || '');
   const [dlSubmitting, setDlSubmitting] = useState(false);
+  const [subView, setSubView] = useState('profile'); // 'profile' or 'approvals'
 
   const handleDlSubmit = async (e) => {
     e.preventDefault();
@@ -1416,7 +1534,7 @@ function SettingsView() {
     try {
       await api.patch('/users/profile', { drivingLicense: dlNumber });
       await loadUser();
-      toast.success('Driving license updated successfully!');
+      toast.success('Driving license updated successfully! Awaiting Admin verification.');
     } catch (err) {
       toast.error('Failed to save driving license');
     } finally {
@@ -1434,123 +1552,150 @@ function SettingsView() {
         </div>
 
         <div className="divide-y divide-slate-100 border border-slate-100 rounded overflow-hidden">
-          <SettingsLink label="My Trips" onClick={() => navigate('/trips')} />
-          <SettingsLink label="My Vehicle" onClick={() => navigate('/vehicle')} />
-          <SettingsLink label="Payment Method" onClick={() => navigate('/wallet')} />
-          <SettingsLink label="Ride History" onClick={() => navigate('/history')} />
-          <SettingsLink label="Saved Places" onClick={() => toast('Feature coming soon! 🚧')} />
-          <SettingsLink label="Help" onClick={() => toast('Support: teamclickjack@gmail.com 📧')} />
+          <SettingsLink label="Profile Settings" icon={User} onClick={() => setSubView('profile')} isHighlight={subView === 'profile'} />
+          <SettingsLink label="My Trips" icon={Clock} onClick={() => navigate('/trips')} />
+          <SettingsLink label="My Vehicle" icon={Car} onClick={() => navigate('/vehicle')} />
+          <SettingsLink label="Payment Method" icon={Wallet} onClick={() => navigate('/wallet')} />
+          <SettingsLink label="Ride History" icon={BarChart3} onClick={() => navigate('/history')} />
+          <SettingsLink label="Saved Places" icon={MapPin} onClick={() => toast('Feature coming soon! 🚧')} />
+          {user?.role === 'admin' && (
+            <SettingsLink label="Driver Approvals" icon={Shield} onClick={() => setSubView('approvals')} isHighlight={subView === 'approvals'} />
+          )}
+          <SettingsLink label="Help & Support" icon={MessageSquare} onClick={() => setIsChatbotOpen(true)} />
+          <SettingsLink label="Log Out" icon={LogOut} onClick={logout} isDanger={true} />
         </div>
       </div>
 
-      {/* Right Column: User Profile & Corporate Details */}
-      <div className="md:col-span-3 bg-white border border-slate-200 rounded-lg p-6 shadow-sm space-y-8">
-        <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-          <div className="flex items-center gap-2">
-            <ChevronLeft className="w-5 h-5 text-[#e85d4a] cursor-pointer" onClick={() => navigate('/')} />
-            <h3 className="font-bold text-slate-800 text-sm">Profile & Details</h3>
-          </div>
-          <span className="text-xs font-semibold px-2.5 py-1 rounded bg-[#e85d4a]/10 text-[#e85d4a] uppercase">
-            {org?.name || 'Odoo Pvt Ltd'}
-          </span>
-        </div>
-
-        {/* Profile Header Block */}
-        <div className="flex flex-col sm:flex-row items-center gap-6 p-6 bg-slate-50 border border-slate-100 rounded-xl">
-          <div className="w-20 h-20 bg-[#e85d4a] rounded-full overflow-hidden border-2 border-white shadow-sm flex items-center justify-center text-2xl font-bold text-white uppercase">
-            {user?.profilePhoto ? (
-              <img src={user.profilePhoto} alt={user.name} className="w-full h-full object-cover" />
-            ) : (
-              user?.name?.slice(0, 2)
-            )}
-          </div>
-          <div className="text-center sm:text-left space-y-1.5 flex-1">
-            <h4 className="text-lg font-bold text-slate-800">{user?.name}</h4>
-            <div className="flex flex-wrap justify-center sm:justify-start items-center gap-3 text-xs text-slate-500">
-              <span className="bg-slate-200 px-2 py-0.5 rounded font-medium capitalize">{user?.role}</span>
-              <span>•</span>
-              <span className="font-medium">{user?.department || 'General'} Department</span>
-              <span>•</span>
-              <span className="flex items-center gap-1 text-amber-500 font-bold">
-                ★ {user?.trustScore?.toFixed(1) || '5.0'} Trust
+      {/* Right Column: Dynamic Sub-view Render */}
+      <div className="md:col-span-3 bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
+        {subView === 'approvals' && user?.role === 'admin' ? (
+          <AdminApprovalsPane />
+        ) : (
+          <div className="space-y-8">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+              <div className="flex items-center gap-2">
+                <ChevronLeft className="w-5 h-5 text-[#e85d4a] cursor-pointer" onClick={() => navigate('/')} />
+                <h3 className="font-bold text-slate-800 text-sm">Profile & Details</h3>
+              </div>
+              <span className="text-xs font-semibold px-2.5 py-1 rounded bg-[#e85d4a]/10 text-[#e85d4a] uppercase">
+                {org?.name || 'Odoo Pvt Ltd'}
               </span>
             </div>
-          </div>
-          <div className="bg-white px-4 py-3 rounded-lg border border-slate-100 text-center shadow-2xs min-w-32">
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Wallet Balance</p>
-            <p className="text-lg font-extrabold text-slate-800">₹{user?.walletBalance}</p>
-          </div>
-        </div>
 
-        {/* Corporate Details Grid */}
-        <div className="space-y-4">
-          <h5 className="text-xs font-bold uppercase tracking-wider text-slate-400">Corporate Coordinates</h5>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 border border-slate-100 rounded-xl p-6 bg-white">
-            <DetailItem label="Full Name" value={user?.name} />
-            <DetailItem label="Work Email" value={user?.email} />
-            <DetailItem label="Mobile Number" value={user?.mobile || 'Not provided'} />
-            <DetailItem label="Department" value={user?.department || 'Not provided'} />
-            <DetailItem label="Reporting Manager" value={user?.manager || 'Not assigned'} />
-            <DetailItem label="Office Seat / Desk" value={user?.officeLocation || 'Not assigned'} />
-          </div>
-        </div>
-
-        {/* ESG & Commute Stats */}
-        <div className="grid grid-cols-3 gap-4">
-          <StatCard label="CO2 Saved" value={`${user?.co2SavedKg?.toFixed(1) || '0.0'} kg`} subtitle="Net savings" />
-          <StatCard label="Rides Offered" value={user?.totalRidesOffered || 0} subtitle="As Driver" />
-          <StatCard label="Rides Taken" value={user?.totalRides || 0} subtitle="As Passenger" />
-        </div>
-
-        {/* Driving License Registration */}
-        <div className="border border-slate-200 rounded-xl p-6 space-y-4">
-          <div className="flex items-start gap-4">
-            <div className="p-2.5 bg-[#e85d4a]/10 rounded-lg text-[#e85d4a] shrink-0">
-              <Shield className="w-5 h-5" />
-            </div>
-            <div className="space-y-1">
-              <h5 className="font-bold text-sm text-slate-800">Driver verification</h5>
-              <p className="text-xs text-slate-400">
-                Register or update your driving license to offer and host carpool pools. This is required for safety and insurance.
-              </p>
-            </div>
-          </div>
-
-          {user?.drivingLicense ? (
-            <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl space-y-2">
-              <div className="flex items-center gap-2 text-emerald-700 font-bold text-xs">
-                <CheckCircle className="w-4 h-4 text-emerald-600" />
-                <span>Verified Driver Profile Active</span>
+            {/* Profile Header Block */}
+            <div className="flex flex-col sm:flex-row items-center gap-6 p-6 bg-slate-50 border border-slate-100 rounded-xl">
+              <div className="w-20 h-20 bg-[#e85d4a] rounded-full overflow-hidden border-2 border-white shadow-sm flex items-center justify-center text-2xl font-bold text-white uppercase">
+                {user?.profilePhoto ? (
+                  <img src={user.profilePhoto} alt={user.name} className="w-full h-full object-cover" />
+                ) : (
+                  user?.name?.slice(0, 2)
+                )}
               </div>
-              <p className="text-[11px] text-emerald-600 font-medium">
-                Registered Driving License: <b className="font-bold font-mono bg-emerald-100/50 px-1.5 py-0.5 rounded">{user.drivingLicense}</b>
-              </p>
-            </div>
-          ) : (
-            <>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-50 border border-rose-100 rounded-full text-[10px] text-rose-600 font-bold">
-                ⚠ No driving license registered. You cannot offer rides.
+              <div className="text-center sm:text-left space-y-1.5 flex-1">
+                <h4 className="text-lg font-bold text-slate-800">{user?.name}</h4>
+                <div className="flex flex-wrap justify-center sm:justify-start items-center gap-3 text-xs text-slate-500">
+                  <span className="bg-slate-200 px-2 py-0.5 rounded font-medium capitalize">{user?.role}</span>
+                  <span>•</span>
+                  <span className="font-medium">{user?.department || 'General'} Department</span>
+                  <span>•</span>
+                  <span className="flex items-center gap-1 text-amber-500 font-bold">
+                    ★ {user?.trustScore?.toFixed(1) || '5.0'} Trust
+                  </span>
+                </div>
               </div>
-              <form onSubmit={handleDlSubmit} className="flex flex-col sm:flex-row gap-3 pt-2">
-                <input
-                  type="text"
-                  required
-                  placeholder="Enter Driving License (e.g. DL-IND-9992388)"
-                  value={dlNumber}
-                  onChange={(e) => setDlNumber(e.target.value)}
-                  className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-[#e85d4a] focus:bg-white flex-1 transition-all"
-                />
-                <button
-                  type="submit"
-                  disabled={dlSubmitting}
-                  className="bg-[#e85d4a] hover:bg-[#d94d3a] disabled:opacity-50 text-white text-xs font-semibold px-6 py-2.5 rounded-lg shadow-sm transition-all"
-                >
-                  {dlSubmitting ? 'Saving...' : 'Verify & Save'}
-                </button>
-              </form>
-            </>
-          )}
-        </div>
+              <div className="bg-white px-4 py-3 rounded-lg border border-slate-100 text-center shadow-2xs min-w-32">
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Wallet Balance</p>
+                <p className="text-lg font-extrabold text-slate-800">₹{user?.walletBalance}</p>
+              </div>
+            </div>
+
+            {/* Corporate Details Grid */}
+            <div className="space-y-4">
+              <h5 className="text-xs font-bold uppercase tracking-wider text-slate-400">Corporate Coordinates</h5>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 border border-slate-100 rounded-xl p-6 bg-white">
+                <DetailItem label="Full Name" value={user?.name} />
+                <DetailItem label="Work Email" value={user?.email} />
+                <DetailItem label="Mobile Number" value={user?.mobile || 'Not provided'} />
+                <DetailItem label="Department" value={user?.department || 'Not provided'} />
+                <DetailItem label="Reporting Manager" value={user?.manager || 'Not assigned'} />
+                <DetailItem label="Office Seat / Desk" value={user?.officeLocation || 'Not assigned'} />
+              </div>
+            </div>
+
+            {/* ESG & Commute Stats */}
+            <div className="grid grid-cols-3 gap-4">
+              <StatCard label="CO2 Saved" value={`${user?.co2SavedKg?.toFixed(1) || '0.0'} kg`} subtitle="Net savings" />
+              <StatCard label="Rides Offered" value={user?.totalRidesOffered || 0} subtitle="As Driver" />
+              <StatCard label="Rides Taken" value={user?.totalRides || 0} subtitle="As Passenger" />
+            </div>
+
+            {/* Driving License Registration */}
+            <div className="border border-slate-200 rounded-xl p-6 space-y-4">
+              <div className="flex items-start gap-4">
+                <div className="p-2.5 bg-[#e85d4a]/10 rounded-lg text-[#e85d4a] shrink-0">
+                  <Shield className="w-5 h-5" />
+                </div>
+                <div className="space-y-1">
+                  <h5 className="font-bold text-sm text-slate-800">Driver Verification Status</h5>
+                  <p className="text-xs text-slate-400">
+                    Register or update your driving license to offer and host carpool pools. This is required for safety and insurance.
+                  </p>
+                </div>
+              </div>
+
+              {user?.drivingLicenseStatus === 'approved' ? (
+                <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl space-y-2">
+                  <div className="flex items-center gap-2 text-emerald-700 font-bold text-xs">
+                    <CheckCircle className="w-4 h-4 text-emerald-600" />
+                    <span>Verified Driver Profile Active</span>
+                  </div>
+                  <p className="text-[11px] text-emerald-600 font-medium">
+                    Registered Driving License: <b className="font-bold font-mono bg-emerald-100/50 px-1.5 py-0.5 rounded">{user.drivingLicense}</b>
+                  </p>
+                </div>
+              ) : user?.drivingLicenseStatus === 'pending' ? (
+                <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl space-y-2">
+                  <div className="flex items-center gap-2 text-amber-700 font-bold text-xs">
+                    <Clock className="w-4 h-4 text-amber-600 animate-spin" />
+                    <span>Awaiting Admin Verification</span>
+                  </div>
+                  <p className="text-[11px] text-amber-600 font-medium">
+                    Submitted License: <b className="font-bold font-mono bg-amber-100/50 px-1.5 py-0.5 rounded">{user.drivingLicense}</b>
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {user?.drivingLicenseStatus === 'rejected' ? (
+                    <div className="p-3 bg-red-50 border border-red-100 text-red-600 text-xs rounded font-semibold">
+                      ⚠ Previous verification attempt was rejected. Please re-enter correct details.
+                    </div>
+                  ) : (
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-50 border border-rose-100 rounded-full text-[10px] text-rose-600 font-bold">
+                      ⚠ No driving license registered. You cannot offer rides.
+                    </div>
+                  )}
+                  <form onSubmit={handleDlSubmit} className="flex flex-col sm:flex-row gap-3 pt-2">
+                    <input
+                      type="text"
+                      required
+                      placeholder="Enter Driving License (e.g. DL-IND-9992388)"
+                      value={dlNumber}
+                      onChange={(e) => setDlNumber(e.target.value)}
+                      className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-[#e85d4a] focus:bg-white flex-1 transition-all"
+                    />
+                    <button
+                      type="submit"
+                      disabled={dlSubmitting}
+                      className="bg-[#e85d4a] hover:bg-[#d94d3a] disabled:opacity-50 text-white text-xs font-semibold px-6 py-2.5 rounded-lg shadow-sm transition-all"
+                    >
+                      {dlSubmitting ? 'Saving...' : 'Verify & Save'}
+                    </button>
+                  </form>
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1575,17 +1720,23 @@ function StatCard({ label, value, subtitle }) {
   );
 }
 
-function SettingsLink({ label, onClick }) {
+function SettingsLink({ label, onClick, icon: Icon, isDanger, isHighlight }) {
   return (
     <div 
       onClick={onClick}
-      className="p-4 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors"
+      className={`p-4 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-all ${
+        isHighlight ? 'bg-[#e85d4a]/5 border-l-4 border-[#e85d4a]' : ''
+      }`}
     >
       <div className="flex items-center gap-3">
-        <div className="w-7 h-7 bg-slate-100 rounded flex items-center justify-center">
-          <Clock className="w-4 h-4 text-slate-500" />
+        <div className={`w-7 h-7 rounded flex items-center justify-center ${
+          isDanger ? 'bg-rose-50 text-rose-500' : isHighlight ? 'bg-[#e85d4a]/10 text-[#e85d4a]' : 'bg-slate-100 text-slate-500'
+        }`}>
+          {Icon ? <Icon className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
         </div>
-        <span className="text-sm font-semibold text-slate-700">{label}</span>
+        <span className={`text-sm font-semibold ${
+          isDanger ? 'text-rose-600' : isHighlight ? 'text-[#e85d4a]' : 'text-slate-700'
+        }`}>{label}</span>
       </div>
     </div>
   );
@@ -1994,9 +2145,85 @@ August 2026,Rs. 1.5L,Rs. 5.8L,Rs. 1.8L,Rs. 4.5L`;
   );
 }
 
+// ─── ADMIN APPROVALS PANE ───────────────────────────────────────────
+function AdminApprovalsPane() {
+  const [pendingUsers, setPendingUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchPending = async () => {
+    try {
+      const res = await api.get('/users/pending-licenses');
+      setPendingUsers(res.data.data);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to load pending driver approvals');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPending();
+  }, []);
+
+  const handleVerify = async (userId, status) => {
+    try {
+      await api.post('/users/verify-license', { userId, status });
+      toast.success(`License successfully ${status}!`);
+      fetchPending();
+    } catch (err) {
+      toast.error('Failed to verify license');
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="border-b border-slate-100 pb-4">
+        <h4 className="font-bold text-slate-800 text-sm">Driver Verification Approvals</h4>
+        <p className="text-xs text-slate-400 mt-1 font-medium">Verify employee driving licenses to grant ride publishing access</p>
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-6">
+          <Loader className="w-6 h-6 animate-spin text-[#e85d4a]" />
+        </div>
+      ) : pendingUsers.length === 0 ? (
+        <div className="text-center py-12 text-slate-400 text-sm font-medium">No pending driver license verifications found.</div>
+      ) : (
+        <div className="divide-y divide-slate-100 border border-slate-100 rounded-xl overflow-hidden bg-white shadow-2xs">
+          {pendingUsers.map((u) => (
+            <div key={u._id} className="p-4 flex flex-col sm:flex-row justify-between sm:items-center gap-4 hover:bg-slate-50 transition-colors">
+              <div className="space-y-1">
+                <p className="text-xs font-bold text-slate-800">{u.name}</p>
+                <p className="text-[10px] text-slate-400 font-semibold">{u.email}</p>
+                <p className="text-[10px] text-slate-500 font-mono bg-slate-100 px-1.5 py-0.5 rounded w-fit mt-1">DL: {u.drivingLicense}</p>
+              </div>
+
+              <div className="flex gap-2 shrink-0">
+                <button
+                  onClick={() => handleVerify(u._id, 'approved')}
+                  className="bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold px-4 py-2 rounded-lg shadow-sm transition-all cursor-pointer animate-all"
+                >
+                  Approve
+                </button>
+                <button
+                  onClick={() => handleVerify(u._id, 'rejected')}
+                  className="bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold px-4 py-2 rounded-lg shadow-sm transition-all cursor-pointer animate-all"
+                >
+                  Reject
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── FLOATING SUPPORT CHAT WIDGET (LangChain Mistral) ─────────────────
 function SupportChatWidget() {
-  const [isOpen, setIsOpen] = useState(false);
+  const { isChatbotOpen: isOpen, setIsChatbotOpen: setIsOpen } = useAuthStore();
   const [messages, setMessages] = useState([
     { sender: 'ai', text: 'Hi! Ask me anything about carpooling policies, routes, or wallet payments.' }
   ]);
@@ -2016,7 +2243,17 @@ function SupportChatWidget() {
       const res = await api.post('/support/chat', { message: userText });
       setMessages(prev => [...prev, { sender: 'ai', text: res.data.data.response }]);
     } catch (err) {
-      setMessages(prev => [...prev, { sender: 'ai', text: 'Sorry, I encountered an error connecting to LangChain support.' }]);
+      // Offline fallback
+      let reply = "Sorry, I couldn't connect to LangChain support. Try asking about 'how to offer a ride' or 'wallet payments'.";
+      const cleaned = userText.toLowerCase();
+      if (cleaned.includes('offer') || cleaned.includes('publish') || cleaned.includes('ride')) {
+        reply = "To offer a ride: Go to the Dashboard, choose the 'Offer Ride' tab, select your vehicle, enter pickup/destination, and set the price. 🚗";
+      } else if (cleaned.includes('license') || cleaned.includes('verify')) {
+        reply = "To verify your license, enter your Driving License number under Settings. An admin will verify it shortly, letting you offer rides.";
+      } else if (cleaned.includes('wallet') || cleaned.includes('recharge') || cleaned.includes('pay')) {
+        reply = "Go to Settings -> Payment Method (or click Wallet) to recharge your wallet balance securely via Razorpay.";
+      }
+      setMessages(prev => [...prev, { sender: 'ai', text: reply }]);
     } finally {
       setLoading(false);
     }

@@ -12,31 +12,31 @@ const createLimiter = (windowMs, max, message) =>
     },
   });
 
-// General API rate limit: 100 req / 15 min per IP
+// General API rate limit: 10000 req / 15 min per IP (increased for dev testing)
 export const apiLimiter = createLimiter(
   15 * 60 * 1000,
-  100,
+  10000,
   'Too many requests from this IP, please try again after 15 minutes'
 );
 
-// Auth routes: 10 req / 15 min (brute-force protection)
+// Auth routes: 10000 req / 15 min (increased for dev testing)
 export const authLimiter = createLimiter(
   15 * 60 * 1000,
-  10,
+  10000,
   'Too many auth attempts from this IP, please try again after 15 minutes'
 );
 
-// Ride search: 30 req / 1 min
+// Ride search: 10000 req / 1 min (increased for dev testing)
 export const searchLimiter = createLimiter(
   60 * 1000,
-  30,
+  10000,
   'Too many search requests, please slow down'
 );
 
-// Payment: 5 req / 5 min (extra strict)
+// Payment: 10000 req / 5 min (increased for dev testing)
 export const paymentLimiter = createLimiter(
   5 * 60 * 1000,
-  5,
+  10000,
   'Too many payment attempts, please try again in 5 minutes'
 );
 

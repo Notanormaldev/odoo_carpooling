@@ -46,7 +46,7 @@ export const createRide = async (driverId, orgId, rideData) => {
   return ride;
 };
 
-export const searchRides = async (orgId, { lat, lng, destLat, destLng, date, seats = 1, radius = 5 }) => {
+export const searchRides = async (orgId, { lat, lng, destLat, destLng, date, seats = 1, radius = 30 }) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 

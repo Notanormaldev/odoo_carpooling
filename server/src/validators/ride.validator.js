@@ -38,7 +38,7 @@ export const searchRidesSchema = z.object({
     destLng: z.string().transform(Number).optional(),
     date: z.string().optional(),
     seats: z.string().transform(Number).optional().default('1'),
-    radius: z.string().transform(Number).optional().default('5'),
+    radius: z.string().transform(Number).optional().default('30'),
   }),
 });
 

@@ -58,7 +58,7 @@ const seedDatabase = async () => {
 
     const sujal = await User.create({
       name: 'Sujal Patel',
-      email: 'sujalpanchal25072005@gmail.com',
+      email: 'sujalpanchal25072005@gmaiil.com',
       password: 'Password123!',
       mobile: '9898989000',
       orgId: org._id,

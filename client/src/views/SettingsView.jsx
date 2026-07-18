@@ -32,6 +32,7 @@ export default function SettingsView() {
   const [dlNumber, setDlNumber] = useState(user?.drivingLicense || '');
   const [dlSubmitting, setDlSubmitting] = useState(false);
   const [subView, setSubView] = useState('profile'); // 'profile' or 'approvals'
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const handleDlSubmit = async (e) => {
     e.preventDefault();
@@ -68,7 +69,7 @@ export default function SettingsView() {
             <SettingsLink label="Driver Approvals" icon={Shield} onClick={() => setSubView('approvals')} isHighlight={subView === 'approvals'} />
           )}
           <SettingsLink label="Help & Support" icon={MessageSquare} onClick={() => setIsChatbotOpen(true)} />
-          <SettingsLink label="Log Out" icon={LogOut} onClick={logout} isDanger={true} />
+          <SettingsLink label="Log Out" icon={LogOut} onClick={() => setShowLogoutModal(true)} isDanger={true} />
         </div>
       </div>
 
@@ -202,6 +203,40 @@ export default function SettingsView() {
           </div>
         )}
       </div>
+
+      {/* Premium Logout Confirmation Modal */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 animate-fade-in">
+          <div className="bg-white border border-slate-100 rounded-xl p-6 max-w-sm w-full mx-4 shadow-xl space-y-4 transform scale-100 transition-all">
+            <div className="w-12 h-12 bg-rose-50 text-[#e85d4a] rounded-full flex items-center justify-center mx-auto mb-2">
+              <LogOut className="w-6 h-6" />
+            </div>
+            <div className="text-center">
+              <h4 className="font-bold text-slate-800 text-base">Log Out?</h4>
+              <p className="text-xs text-slate-400 mt-1">
+                Are you sure you want to log out of your session?
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowLogoutModal(false)}
+                className="flex-1 border border-slate-200 text-slate-500 hover:bg-slate-50 font-semibold py-2 rounded text-xs transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowLogoutModal(false);
+                  logout();
+                }}
+                className="flex-1 bg-[#e85d4a] hover:bg-[#d94d3a] text-white font-semibold py-2 rounded text-xs transition-colors shadow-sm cursor-pointer"
+              >
+                Log Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

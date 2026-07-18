@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Download, Loader } from 'lucide-react';
 import api from '../api/axios';
+import { jsPDF } from 'jspdf';
 
 export default function ReportsView() {
   const [report, setReport] = useState(null);
@@ -23,16 +24,139 @@ export default function ReportsView() {
     }
   };
 
-  const handleDownloadReportCSV = () => {
-    const csvContent = `Month,Revenue,Fuel Cost,Maintenance,Net Profit
-July 2026,Rs. 1.2L,Rs. 6L,Rs. 2L,Rs. 4L
-August 2026,Rs. 1.5L,Rs. 5.8L,Rs. 1.8L,Rs. 4.5L`;
+  const handleDownloadReportPDF = () => {
+    const doc = new jsPDF();
 
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'carpooling_financial_report.csv';
-    link.click();
+    const primaryColor = [232, 93, 74]; // #e85d4a
+    const darkGray = [51, 65, 85];     // #334155
+    const lightGray = [241, 245, 249];  // #f1f5f9
+    const borderGray = [226, 232, 240]; // #e2e8f0
+
+    // Header Band
+    doc.setFillColor(...primaryColor);
+    doc.rect(0, 0, 210, 40, 'F');
+
+    // Header Text
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.text('FINANCIAL & FLEET REPORT', 20, 26);
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Enterprise Carpooling Platform', 145, 26);
+
+    // Reset Text Color
+    doc.setTextColor(...darkGray);
+
+    // Metadata
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Report Generated:', 20, 55);
+    doc.setFont('helvetica', 'normal');
+    doc.text(new Date().toLocaleString(), 55, 55);
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('Scope:', 20, 62);
+    doc.setFont('helvetica', 'normal');
+    doc.text('All Active Organization Vehicles & Trips', 55, 62);
+
+    // Section 1: Executive Summary
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text('Executive Summary', 20, 78);
+
+    // Draw three metrics boxes
+    doc.setFillColor(...lightGray);
+    doc.rect(20, 84, 52, 20, 'F');
+    doc.rect(79, 84, 52, 20, 'F');
+    doc.rect(138, 84, 52, 20, 'F');
+
+    // Box 1
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139); // Slate-500
+    doc.text('TOTAL FUEL COST', 24, 91);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(...primaryColor);
+    doc.text('Rs. 2.6 L', 24, 98);
+
+    // Box 2
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139);
+    doc.text('FLEET ROI', 83, 91);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(34, 197, 94); // Green
+    doc.text('+12.5%', 83, 98);
+
+    // Box 3
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139);
+    doc.text('UTILIZATION RATE', 142, 91);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(...darkGray);
+    doc.text('62%', 142, 98);
+
+    // Reset Text Color
+    doc.setTextColor(...darkGray);
+
+    // Section 2: Detailed Monthly Financial Table
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text('Detailed Monthly Financials', 20, 120);
+
+    // Table Header
+    doc.setFillColor(...lightGray);
+    doc.rect(20, 126, 170, 10, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.text('Month', 24, 132);
+    doc.text('Revenue', 60, 132);
+    doc.text('Fuel Cost', 95, 132);
+    doc.text('Maintenance', 130, 132);
+    doc.text('Net Profit', 165, 132);
+
+    doc.setDrawColor(...borderGray);
+    doc.line(20, 136, 190, 136);
+
+    // Row 1
+    doc.setFont('helvetica', 'normal');
+    doc.text('July 2026', 24, 144);
+    doc.text('Rs. 1.2L', 60, 144);
+    doc.text('Rs. 6L', 95, 144);
+    doc.text('Rs. 2L', 130, 144);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(34, 197, 94);
+    doc.text('Rs. 4L', 165, 144);
+
+    doc.line(20, 148, 190, 148);
+
+    // Row 2
+    doc.setTextColor(...darkGray);
+    doc.setFont('helvetica', 'normal');
+    doc.text('August 2026', 24, 156);
+    doc.text('Rs. 1.5L', 60, 156);
+    doc.text('Rs. 5.8L', 95, 156);
+    doc.text('Rs. 1.8L', 130, 156);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(34, 197, 94);
+    doc.text('Rs. 4.5L', 165, 156);
+
+    doc.line(20, 160, 190, 160);
+
+    // Footer
+    doc.setDrawColor(...borderGray);
+    doc.line(20, 260, 190, 260);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(148, 163, 184);
+    doc.text('Confidential - Internal Corporate Commute Analytics Report', 105, 270, { align: 'center' });
+
+    doc.save('carpooling_financial_report.pdf');
   };
 
   if (loading) {
@@ -57,10 +181,10 @@ August 2026,Rs. 1.5L,Rs. 5.8L,Rs. 1.8L,Rs. 4.5L`;
             <h3 className="font-bold text-slate-800 text-sm">Report</h3>
           </div>
           <button 
-            onClick={handleDownloadReportCSV}
+            onClick={handleDownloadReportPDF}
             className="bg-[#e85d4a] hover:bg-[#d94d3a] text-white text-xs font-semibold px-4 py-2 rounded flex items-center gap-2 shadow-sm transition-all cursor-pointer"
           >
-            <Download className="w-3.5 h-3.5" /> Download CSV Report
+            <Download className="w-3.5 h-3.5" /> Download PDF Report
           </button>
         </div>
 

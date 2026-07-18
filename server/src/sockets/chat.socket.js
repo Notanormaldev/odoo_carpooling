@@ -1,5 +1,6 @@
 import ChatMessage from '../models/ChatMessage.model.js';
 import Trip from '../models/Trip.model.js';
+import User from '../models/User.model.js';
 
 export const registerChatHandlers = (io, socket) => {
   // Join room for a trip
@@ -40,9 +41,12 @@ export const registerChatHandlers = (io, socket) => {
         return;
       }
 
+      const user = await User.findById(socket.userId);
+
       const msg = await ChatMessage.create({
         tripId,
         senderId: socket.userId,
+        senderName: user ? user.name : 'Unknown',
         message: text,
       });
 

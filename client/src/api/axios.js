@@ -68,9 +68,8 @@ api.interceptors.response.use(
     } catch (refreshError) {
       processQueue(refreshError, null);
       localStorage.removeItem('accessToken');
-      // Use pushState so React Router handles the redirect cleanly
-      window.history.pushState({}, '', '/login');
-      window.dispatchEvent(new PopStateEvent('popstate'));
+      // Hard redirect — pushState was silently failing
+      window.location.href = '/login';
       return Promise.reject(refreshError);
     } finally {
       isRefreshing = false;

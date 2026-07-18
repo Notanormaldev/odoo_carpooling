@@ -36,7 +36,7 @@ const geocodeAddress = (address) => {
   if (!address) return null;
   const clean = address.toLowerCase().trim();
 
-  // Try predefined cities match
+  // Match predefined Gujarat cities
   const matched = CITIES.find(c =>
     clean.includes(c.name) ||
     clean.includes(c.label.toLowerCase()) ||
@@ -44,31 +44,28 @@ const geocodeAddress = (address) => {
   );
   if (matched) return { lat: matched.lat, lng: matched.lng };
 
-  if (clean.includes('infocity')) return { lat: 23.1974, lng: 72.6326 };
-  if (clean.includes('iskcon')) return { lat: 23.0225, lng: 72.5714 };
-  if (clean.includes('c g road') || clean.includes('cg road')) return { lat: 23.0258, lng: 72.5594 };
-  if (clean.includes('sector 21')) return { lat: 23.2244, lng: 72.6489 };
-  if (clean.includes('gift city')) return { lat: 23.1594, lng: 72.6844 };
-  if (clean.includes('sargasan')) return { lat: 23.1947, lng: 72.6105 };
-  if (clean.includes('vastrapur')) return { lat: 23.0379, lng: 72.5273 };
-  if (clean.includes('prahlad')) return { lat: 22.9982, lng: 72.5034 };
-  if (clean.includes('chandkheda')) return { lat: 23.1118, lng: 72.5855 };
-
-  // No match — return null (caller must handle via async Nominatim)
+  // No match — return null (caller uses cached coords from suggestion dropdown)
   return null;
 };
 
 const nominatimGeocode = async (address) => {
   if (!address) return null;
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000); // 3s timeout
     const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address + ', Gujarat, India')}&limit=1&countrycodes=in`;
-    const res = await fetch(url, { headers: { 'User-Agent': 'odoo-carpooling-app' } });
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'odoo-carpooling-app' },
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
     const data = await res.json();
     if (data && data.length > 0) {
       return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
     }
   } catch (err) {
-    console.error('Nominatim geocode error:', err);
+    // Timeout or network error - silently skip geocoding
+    console.warn('Nominatim geocode skipped:', err.name);
   }
   return null;
 };
@@ -209,35 +206,31 @@ export default function DashboardView() {
     }
   };
 
-  const handleSearch = async (e) => {
-    if (e) e.preventDefault();
+  const handleSearch = async () => {
     setLoading(true);
     try {
       let queryParams = `seats=${seats}`;
       if (date) queryParams += `&date=${date}`;
 
-      if (pickup) {
-        // Use cached coords from suggestion click, or try static lookup, or async Nominatim
-        let startCoords = pickupCoords || geocodeAddress(pickup);
-        if (!startCoords) startCoords = await nominatimGeocode(pickup);
-        if (startCoords) queryParams += `&lat=${startCoords.lat}&lng=${startCoords.lng}`;
-      }
+      // Use coords from suggestion selection (pickupCoords/destCoords) or instant static lookup
+      // Never await external APIs here — that blocks the UI
+      const startCoords = pickupCoords || geocodeAddress(pickup);
+      if (startCoords) queryParams += `&lat=${startCoords.lat}&lng=${startCoords.lng}`;
 
-      if (destination) {
-        let dstCoords = destCoords || geocodeAddress(destination);
-        if (!dstCoords) dstCoords = await nominatimGeocode(destination);
-        if (dstCoords) queryParams += `&destLat=${dstCoords.lat}&destLng=${dstCoords.lng}`;
-      }
+      const dstCoords = destCoords || geocodeAddress(destination);
+      if (dstCoords) queryParams += `&destLat=${dstCoords.lat}&destLng=${dstCoords.lng}`;
 
       const res = await api.get(`/rides/search?${queryParams}`);
       setRides(res.data.data);
-      if (res.data.data.length === 0) {
-        setMsg('No available rides matching your criteria.');
-      } else {
-        setMsg('');
-      }
+      setMsg(res.data.data.length === 0 ? 'No rides found. Try different locations or dates.' : '');
     } catch (err) {
-      setMsg('Error searching for rides.');
+      console.error('Search error:', err);
+      if (err.response?.status === 401) {
+        localStorage.removeItem('accessToken');
+        window.location.href = '/login';
+      } else {
+        setMsg('Error searching for rides. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -250,13 +243,15 @@ export default function DashboardView() {
       if (date) queryParams += `&date=${date}`;
       const res = await api.get(`/rides/search?${queryParams}`);
       setRides(res.data.data);
-      if (res.data.data.length === 0) {
-        setMsg('No available rides matching your criteria.');
-      } else {
-        setMsg('');
-      }
+      setMsg(res.data.data.length === 0 ? 'No rides available.' : '');
     } catch (err) {
-      setMsg('Error searching for rides.');
+      console.error('View all error:', err);
+      if (err.response?.status === 401) {
+        localStorage.removeItem('accessToken');
+        window.location.href = '/login';
+      } else {
+        setMsg('Error loading rides. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -445,8 +440,7 @@ export default function DashboardView() {
                 <div className="relative">
                   <input
                     type="text"
-                    required
-                    placeholder="Pickup point"
+                    placeholder="Pickup point (optional)"
                     value={pickup}
                     onChange={(e) => handlePickupChange(e.target.value)}
                     onFocus={handlePickupFocus}
@@ -478,8 +472,7 @@ export default function DashboardView() {
                 <div className="relative">
                   <input
                     type="text"
-                    required
-                    placeholder="Drop point"
+                    placeholder="Drop point (optional)"
                     value={destination}
                     onChange={(e) => handleDestChange(e.target.value)}
                     onFocus={handleDestFocus}
@@ -519,10 +512,9 @@ export default function DashboardView() {
                 </div>
                 <div>
                   <label className="block text-xs text-slate-400 mb-2 font-medium">Seats</label>
-                  <input
+                   <input
                     type="number"
                     min="1"
-                    required
                     value={seats}
                     onChange={(e) => setSeats(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-2.5 text-xs focus:outline-none focus:border-[#e85d4a]"
@@ -531,11 +523,23 @@ export default function DashboardView() {
               </div>
 
               <div className="space-y-2">
-                <button type="submit" className="w-full bg-[#e85d4a] hover:bg-[#d94d3a] text-white py-3 rounded text-sm font-semibold transition-colors shadow-sm cursor-pointer">
-                  Find Ride
+                <button
+                  type="button"
+                  onClick={handleSearch}
+                  className="w-full bg-[#e85d4a] hover:bg-[#d94d3a] text-white py-3 rounded text-sm font-semibold transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-2"
+                >
+                  {loading ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                      </svg>
+                      Searching...
+                    </>
+                  ) : 'Find Ride'}
                 </button>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={handleViewAllRides}
                   className="w-full bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 py-2.5 rounded text-xs font-semibold transition-colors shadow-sm cursor-pointer"
                 >
@@ -545,34 +549,24 @@ export default function DashboardView() {
             </form>
 
             <div className="mt-4 pt-4 border-t border-slate-100 space-y-2">
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Recommended Commutes</span>
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Popular Routes</span>
               <div className="flex flex-wrap gap-2">
                 {[
-                  { from: 'Ahmedabad (ISKCON Circle)', to: 'Gandhinagar (Infocity)', label: 'Ahmedabad ➔ Gandhinagar' },
-                  { from: 'Ahmedabad (C G Road)', to: 'Gandhinagar (Sector 21)', label: 'CG Road ➔ Sector 21' },
-                  { from: 'GIFT City, Gandhinagar', to: 'Sargasan, Gandhinagar', label: 'GIFT City ➔ Sargasan' }
+                  { fromLabel: 'AHM (AHMEDABAD)', toLabel: 'GND (GANDHINAGAR)', fromCoords: { lat: 23.0689, lng: 72.6531 }, toCoords: { lat: 23.2156, lng: 72.6369 }, label: 'Ahmedabad ➔ Gandhinagar' },
+                  { fromLabel: 'SUR (SURAT)', toLabel: 'BRD (VADODARA)', fromCoords: { lat: 21.1939, lng: 72.8319 }, toCoords: { lat: 22.3178, lng: 73.1780 }, label: 'Surat ➔ Vadodara' },
+                  { fromLabel: 'RAJ (RAJKOT)', toLabel: 'AHM (AHMEDABAD)', fromCoords: { lat: 22.3070, lng: 70.7769 }, toCoords: { lat: 23.0060, lng: 72.5100 }, label: 'Rajkot ➔ Ahmedabad' },
+                  { fromLabel: 'BHN (BHAVNAGAR)', toLabel: 'AHM (AHMEDABAD)', fromCoords: { lat: 21.7671, lng: 72.1516 }, toCoords: { lat: 23.0156, lng: 72.5698 }, label: 'Bhavnagar ➔ Ahmedabad' },
+                  { fromLabel: 'ANND (ANAND)', toLabel: 'AHM (AHMEDABAD)', fromCoords: { lat: 22.5409, lng: 72.9222 }, toCoords: { lat: 23.0341, lng: 72.5630 }, label: 'Anand ➔ Ahmedabad' },
+                  { fromLabel: 'MSN (MEHSANA)', toLabel: 'GND (GANDHINAGAR)', fromCoords: { lat: 23.5880, lng: 72.3693 }, toCoords: { lat: 23.2156, lng: 72.6369 }, label: 'Mehsana ➔ Gandhinagar' },
                 ].map((route, idx) => (
                   <button
                     key={idx}
                     type="button"
-                    onClick={async () => {
-                      setPickup(route.from);
-                      setDestination(route.to);
-                      setDate('2026-07-31');
-                      setLoading(true);
-                      try {
-                        const res = await api.get(`/rides/search?seats=${seats}&date=2026-07-31`);
-                        setRides(res.data.data);
-                        if (res.data.data.length === 0) {
-                          setMsg('No available rides matching your criteria.');
-                        } else {
-                          setMsg('');
-                        }
-                      } catch (err) {
-                        setMsg('Error searching for rides.');
-                      } finally {
-                        setLoading(false);
-                      }
+                    onClick={() => {
+                      setPickup(route.fromLabel);
+                      setDestination(route.toLabel);
+                      setPickupCoords(route.fromCoords);
+                      setDestCoords(route.toCoords);
                     }}
                     className="text-[10px] bg-slate-100 hover:bg-[#e85d4a]/10 hover:text-[#e85d4a] text-slate-600 font-bold px-2 py-1.5 rounded transition-all cursor-pointer font-sans"
                   >
@@ -667,15 +661,24 @@ export default function DashboardView() {
             <form onSubmit={handlePublishClick} className="space-y-4">
               <div>
                 <label className="block text-xs text-slate-400 mb-2 font-medium">Select Vehicle</label>
-                <select
-                  value={selectedVehicle}
-                  onChange={(e) => setSelectedVehicle(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-3 text-sm focus:outline-none focus:border-[#e85d4a]"
-                >
-                  {vehicles.map(v => (
-                    <option key={v._id} value={v._id}>{v.model} - {v.registrationNumber}</option>
-                  ))}
-                </select>
+                {vehicles.length === 0 ? (
+                  <div className="w-full bg-amber-50 border border-amber-200 rounded px-4 py-3 text-sm text-amber-700 font-medium">
+                    ⚠️ No registered vehicles found.{' '}
+                    <a href="/vehicles" className="underline text-[#e85d4a]">Register a vehicle</a> first to offer rides.
+                  </div>
+                ) : (
+                  <select
+                    value={selectedVehicle}
+                    onChange={(e) => setSelectedVehicle(e.target.value)}
+                    required
+                    className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-3 text-sm focus:outline-none focus:border-[#e85d4a]"
+                  >
+                    <option value="" disabled>-- Select a vehicle --</option>
+                    {vehicles.map(v => (
+                      <option key={v._id} value={v._id}>{v.model} — {v.registrationNumber}</option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               <div>

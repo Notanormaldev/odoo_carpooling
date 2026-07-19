@@ -927,8 +927,8 @@ export default function DashboardView() {
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${r.status === 'published' ? 'bg-green-50 text-green-600' :
-                            r.status === 'full' ? 'bg-blue-50 text-blue-600' :
-                              'bg-amber-50 text-amber-600'
+                          r.status === 'full' ? 'bg-blue-50 text-blue-600' :
+                            'bg-amber-50 text-amber-600'
                           }`}>{r.status}</span>
                         {r.status === 'published' && (
                           confirmCancelRideId === r._id ? (

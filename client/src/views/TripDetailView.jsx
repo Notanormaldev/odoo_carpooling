@@ -400,8 +400,8 @@ export default function TripDetailView() {
     setBoardingSubmit(true);
     try {
       const isOtp = boardCodeInput.trim().length === 6 && /^\d+$/.test(boardCodeInput.trim());
-      const payload = isOtp 
-        ? { otpCode: boardCodeInput.trim(), tripId } 
+      const payload = isOtp
+        ? { otpCode: boardCodeInput.trim(), tripId }
         : { qrCode: boardCodeInput.trim(), tripId };
       await api.post('/trips/verify-qr', payload);
       toast.success('Passenger successfully verified and boarded!');
@@ -561,9 +561,8 @@ export default function TripDetailView() {
                   <Star
                     key={star}
                     onClick={() => setRatingStars(star)}
-                    className={`w-9 h-9 cursor-pointer transition-all duration-150 hover:scale-110 ${
-                      star <= ratingStars ? 'fill-amber-400 text-amber-400 scale-110' : 'text-slate-200 hover:text-amber-300'
-                    }`}
+                    className={`w-9 h-9 cursor-pointer transition-all duration-150 hover:scale-110 ${star <= ratingStars ? 'fill-amber-400 text-amber-400 scale-110' : 'text-slate-200 hover:text-amber-300'
+                      }`}
                   />
                 ))}
               </div>

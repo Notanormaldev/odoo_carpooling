@@ -240,7 +240,12 @@ export default function DashboardView() {
     }
   };
 
-  const handleSearch = async () => {
+  const handleSearch = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!pickup.trim() || !destination.trim()) {
+      toast.error('Please enter both Pickup and Drop/Destination locations.');
+      return;
+    }
     setLoading(true);
     try {
       let queryParams = `seats=${seats}`;
@@ -511,7 +516,8 @@ export default function DashboardView() {
                 <div className="relative">
                   <input
                     type="text"
-                    placeholder="Pickup point (optional)"
+                    required
+                    placeholder="Enter pickup point"
                     value={pickup}
                     onChange={(e) => handlePickupChange(e.target.value)}
                     onFocus={handlePickupFocus}
@@ -543,7 +549,8 @@ export default function DashboardView() {
                 <div className="relative">
                   <input
                     type="text"
-                    placeholder="Drop point (optional)"
+                    required
+                    placeholder="Enter drop point"
                     value={destination}
                     onChange={(e) => handleDestChange(e.target.value)}
                     onFocus={handleDestFocus}
@@ -596,8 +603,7 @@ export default function DashboardView() {
 
               <div className="space-y-2">
                 <button
-                  type="button"
-                  onClick={handleSearch}
+                  type="submit"
                   className="w-full bg-[#e85d4a] hover:bg-[#d94d3a] text-white py-3 rounded text-sm font-semibold transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-2"
                 >
                   {loading ? (

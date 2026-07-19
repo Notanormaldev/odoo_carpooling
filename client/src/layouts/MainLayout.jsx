@@ -1,6 +1,6 @@
 import React from 'react';
 import { Routes, Route, Link, useNavigate } from 'react-router-dom';
-import { LogOut } from 'lucide-react';
+import { LogOut, Menu, X } from 'lucide-react';
 import useAuthStore from '../store/authStore';
 import SupportChatWidget from '../components/SupportChatWidget';
 import SosWidget from '../components/SosWidget';
@@ -30,6 +30,7 @@ export default function MainLayout() {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const [showLogoutModal, setShowLogoutModal] = React.useState(false);
+  const [isMenuOpen, setIsMenuOpen] = React.useState(false);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans relative">
@@ -69,9 +70,74 @@ export default function MainLayout() {
             <button onClick={() => setShowLogoutModal(true)} className="p-2 text-slate-400 hover:text-[#e85d4a] rounded transition-colors cursor-pointer" title="Log Out">
               <LogOut className="w-4 h-4" />
             </button>
+
+            {/* Mobile Hamburger Toggle */}
+            <button 
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="md:hidden p-2 text-slate-500 hover:text-[#e85d4a] rounded transition-colors cursor-pointer"
+            >
+              {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
           </div>
         </div>
       </header>
+
+      {/* Mobile Navigation Dropdown */}
+      {isMenuOpen && (
+        <nav className="md:hidden bg-white border-b border-slate-200 px-6 py-4 flex flex-col gap-3 shadow-md animate-fade-in">
+          <Link 
+            to="/" 
+            onClick={() => setIsMenuOpen(false)}
+            className="text-sm font-bold text-slate-600 hover:text-[#e85d4a] py-2 border-b border-slate-100 transition-colors"
+          >
+            Dashboard
+          </Link>
+          <Link 
+            to="/trips" 
+            onClick={() => setIsMenuOpen(false)}
+            className="text-sm font-bold text-slate-600 hover:text-[#e85d4a] py-2 border-b border-slate-100 transition-colors"
+          >
+            My Trips
+          </Link>
+          <Link 
+            to="/history" 
+            onClick={() => setIsMenuOpen(false)}
+            className="text-sm font-bold text-slate-600 hover:text-[#e85d4a] py-2 border-b border-slate-100 transition-colors"
+          >
+            Ride History
+          </Link>
+          <Link 
+            to="/vehicle" 
+            onClick={() => setIsMenuOpen(false)}
+            className="text-sm font-bold text-slate-600 hover:text-[#e85d4a] py-2 border-b border-slate-100 transition-colors"
+          >
+            My Vehicle
+          </Link>
+          <Link 
+            to="/wallet" 
+            onClick={() => setIsMenuOpen(false)}
+            className="text-sm font-bold text-slate-600 hover:text-[#e85d4a] py-2 border-b border-slate-100 transition-colors"
+          >
+            Wallet
+          </Link>
+          <Link 
+            to="/settings" 
+            onClick={() => setIsMenuOpen(false)}
+            className="text-sm font-bold text-slate-600 hover:text-[#e85d4a] py-2 border-b border-slate-100 transition-colors"
+          >
+            Setting
+          </Link>
+          {user?.role === 'admin' && (
+            <Link 
+              to="/reports" 
+              onClick={() => setIsMenuOpen(false)}
+              className="text-sm font-bold text-slate-600 hover:text-[#e85d4a] py-2 border-b border-slate-100 transition-colors"
+            >
+              Report
+            </Link>
+          )}
+        </nav>
+      )}
 
       {/* Premium Logout Confirmation Modal */}
       {showLogoutModal && (

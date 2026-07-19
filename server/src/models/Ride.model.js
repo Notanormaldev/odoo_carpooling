@@ -96,13 +96,32 @@ rideSchema.index({ orgId: 1, status: 1, dateTime: 1 });
 rideSchema.index({ driverId: 1 });
 rideSchema.index({ dateTime: 1 });
 
-// Pre-save: sync geo points from location
+// Pre-save: sync geo points from location and calculate distanceKm
 rideSchema.pre('save', function (next) {
   if (this.startLocation?.lng && this.startLocation?.lat) {
     this.startPoint = { type: 'Point', coordinates: [this.startLocation.lng, this.startLocation.lat] };
   }
   if (this.destination?.lng && this.destination?.lat) {
     this.endPoint = { type: 'Point', coordinates: [this.destination.lng, this.destination.lat] };
+  }
+
+  // Calculate straight-line distance (Haversine) with a driving multiplier
+  if (this.startLocation?.lat && this.startLocation?.lng && this.destination?.lat && this.destination?.lng) {
+    const lat1 = this.startLocation.lat;
+    const lon1 = this.startLocation.lng;
+    const lat2 = this.destination.lat;
+    const lon2 = this.destination.lng;
+
+    const R = 6371; // Earth radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    
+    // 1.25 is standard ratio of driving distance to straight-line distance
+    this.distanceKm = parseFloat((R * c * 1.25).toFixed(1));
   }
   next();
 });

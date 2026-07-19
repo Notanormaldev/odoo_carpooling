@@ -10,6 +10,13 @@ const RIDE_CACHE_TTL = 300; // 5 minutes
 export const createRide = async (driverId, orgId, rideData) => {
   const { vehicleId, startLocation, destination, dateTime, totalSeats, farePerSeat, isRecurring, recurringDays } = rideData;
 
+  // Validate date is not in the past
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (new Date(dateTime) < today) {
+    throw ApiError.badRequest('Cannot publish a ride for a past date');
+  }
+
   // Verify vehicle is active and belongs to driver
   const vehicle = await Vehicle.findOne({ _id: vehicleId, ownerId: driverId, status: 'active' });
   if (!vehicle) throw ApiError.badRequest('Vehicle not found or not approved. Please register a vehicle first.');

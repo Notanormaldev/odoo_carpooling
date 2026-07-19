@@ -141,6 +141,12 @@ rideSchema.statics.findNearbyRides = function (orgId, lat, lng, radiusKm = 5) {
     },
     { $unwind: '$vehicle' },
     { $sort: { dateTime: 1, startDistance: 1 } },
+    {
+      $addFields: {
+        driverId: '$driver',
+        vehicleId: '$vehicle'
+      }
+    }
   ]);
 };
 

@@ -71,11 +71,13 @@ const nominatimGeocode = async (address) => {
 };
 
 export default function DashboardView() {
+  const todayStr = new Date().toLocaleDateString('en-CA');
   const { user, loadUser } = useAuthStore();
   const [activeTab, setActiveTab] = useState('find');
   const [pickup, setPickup] = useState('');
   const [destination, setDestination] = useState('');
   const [date, setDate] = useState('');
+  const [time, setTime] = useState('08:00');
   const [seats, setSeats] = useState(1);
   const [rides, setRides] = useState([]);
   const [myRides, setMyRides] = useState([]);
@@ -403,7 +405,7 @@ export default function DashboardView() {
     try {
       const start = pickupCoords || geocodeAddress(pickup, false);
       const dest = destCoords || geocodeAddress(destination, true);
-      const dateTime = new Date(`${date}T08:00:00Z`).toISOString();
+      const dateTime = new Date(`${date}T${time || '08:00'}:00`).toISOString();
       await api.post('/rides', {
         vehicleId: selectedVehicle,
         startLocation: { address: pickup, lat: start.lat, lng: start.lng },
@@ -418,6 +420,8 @@ export default function DashboardView() {
       setDestination('');
       setPickupCoords(null);
       setDestCoords(null);
+      setDate('');
+      setTime('08:00');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Error publishing ride');
     } finally {
@@ -571,6 +575,7 @@ export default function DashboardView() {
                   <label className="block text-xs text-slate-400 mb-2 font-medium">Date</label>
                   <input
                     type="date"
+                    min={todayStr}
                     // required
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
@@ -834,6 +839,7 @@ export default function DashboardView() {
                   <label className="block text-xs text-slate-400 mb-2 font-medium">Date</label>
                   <input
                     type="date"
+                    min={todayStr}
                     required
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
@@ -841,7 +847,20 @@ export default function DashboardView() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-400 mb-2 font-medium">Seats</label>
+                  <label className="block text-xs text-slate-400 mb-2 font-medium">Timing</label>
+                  <input
+                    type="time"
+                    required
+                    value={time}
+                    onChange={(e) => setTime(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-3 text-sm focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs text-slate-400 mb-2 font-medium">Seats Available</label>
                   <input
                     type="number"
                     min="1"
@@ -851,18 +870,17 @@ export default function DashboardView() {
                     className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-3 text-sm focus:outline-none"
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-xs text-slate-400 mb-2 font-medium">Price / Seat (₹)</label>
-                <input
-                  type="number"
-                  min="10"
-                  required
-                  value={fareOffer}
-                  onChange={(e) => setFareOffer(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-3 text-sm focus:outline-none focus:border-[#e85d4a]"
-                />
+                <div>
+                  <label className="block text-xs text-slate-400 mb-2 font-medium">Price / Seat (₹)</label>
+                  <input
+                    type="number"
+                    min="10"
+                    required
+                    value={fareOffer}
+                    onChange={(e) => setFareOffer(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded px-4 py-3 text-sm focus:outline-none focus:border-[#e85d4a]"
+                  />
+                </div>
               </div>
 
               <button type="submit" className="w-full bg-[#e85d4a] hover:bg-[#d94d3a] text-white py-3 rounded text-sm font-semibold transition-colors shadow-sm cursor-pointer">
